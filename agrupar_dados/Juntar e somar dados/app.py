@@ -1,11 +1,9 @@
 import pandas as pd
 
 # Caminho para o arquivo Excel existente
-caminho_arquivo_existente = r'C:\Users\tudot\OneDrive\Área de Trabalho\Python - Juntar e somar dados\dados.xlsx'
+caminho_arquivo_existente = r'C:\Users\tudot\Documents\Relatórios\desafios_python\agrupar_dados\Juntar e somar dados\dados.xlsx'
 
-caminho_novo = r'C:\Users\tudot\OneDrive\Área de Trabalho\Python - Juntar e somar dados\novos.xlsx'
-
-import pandas as pd
+caminho_novo = r'C:\Users\tudot\Documents\Relatórios\desafios_python\agrupar_dados\Juntar e somar dados\novos.xlsx'
 
 # Ler o arquivo Excel
 df = pd.read_excel(caminho_arquivo_existente)
