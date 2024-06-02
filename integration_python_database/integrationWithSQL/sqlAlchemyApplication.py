@@ -52,3 +52,76 @@ class Address(Base):
 print(User.__tablename__)
 print(Address.__tablename__)
 
+# conexão com o banco de dados
+database_path = 'D:/Python/integration_python_database/integrationWithSQL/database.db'
+engine = create_engine(f'sqlite:///{database_path}')
+
+# criando as classes como tabelas no banco de dados
+Base.metadata.create_all(engine)
+
+# depreciado - será removido em futuro release
+# print(engine.table_names())
+
+# investiga o esquema de banco de dados
+inspetor_engine = inspect(engine)
+print(inspetor_engine.has_table("user_account"))
+print(inspetor_engine.get_table_names())
+print(inspetor_engine.default_schema_name)
+
+with Session(engine) as session:
+    jones = User(
+        name='jones',
+        fullname='Jones Souza',
+        address=[Address(email_address='jonesbass.tb@gmail.com')]
+    )
+
+    sandy = User(
+        name='sandy',
+        fullname='Sandy Cardoso',
+        address=[Address(email_address='sandy.tb@gemail.br'),
+                 Address(email_address='sandysilva.tb@gmail.org')]
+    )
+
+    patrick = User(name='patrick', fullname='Patrick Cardoso')
+
+    # enviando para o BD (persitência de dados)
+    session.add_all([jones, sandy, patrick])
+
+    session.commit()
+
+stmt = select(User).where(User.name.in_(["jones", 'sandy', 'patrick']))
+print('Recuperando usuários a partir de condição de filtragem')
+for user in session.scalars(stmt):
+    print(user)
+
+stmt_address = select(Address).where(Address.user_id.in_([1]))
+print('\nRecuperando os endereços de email de Jones')
+for address in session.scalars(stmt_address):
+    print(address)
+
+
+stmt_order = select(User).order_by(User.fullname.desc())
+print("\nRecuperando info de maneira ordenada")
+for result in session.scalars(stmt_order):
+    print(result)
+
+stmt_join = select(User.fullname, Address.email_address).join_from(Address, User)
+print("\n")
+for result in session.scalars(stmt_join):
+    print(result)
+
+# print(select(User.fullname, Address.email_address).join_from(Address, User))
+
+connection = engine.connect()
+results = connection.execute(stmt_join).fetchall()
+print("\nExecutando statement a partir da connection")
+for result in results:
+    print(result)
+
+stmt_count = select(func.count('*')).select_from(User)
+print('\nTotal de instâncias em User')
+for result in session.scalars(stmt_count):
+    print(result)
+
+# encerrando de fato a session
+session.close()
