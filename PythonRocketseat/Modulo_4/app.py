@@ -8,6 +8,7 @@ from flask_login import (
     logout_user,
     login_required,
 )
+import bcrypt
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "your_secret_key"
@@ -37,7 +38,7 @@ def login():
         # Login
         user = User.query.filter_by(username=username).first()
 
-        if user and user.password == password:
+        if user and bcrypt.checkpw(password.encode("utf-8"), user.password):
             login_user(user)
             print(current_user.is_authenticated)
             return jsonify({"message": "Autenticação realizada com sucesso!"})
@@ -65,7 +66,8 @@ def create_user():
         return jsonify({"message": "Role inválida. Use 'user' ou 'admin'."}), 400
 
     if username and password:
-        user = User(username=username, password=password, role=role)
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+        user = User(username=username, password=hashed_password, role=role)
         db.session.add(user)
         db.session.commit()
         return jsonify({"message": f"Usuário cadastrado com sucesso como {role}."})
