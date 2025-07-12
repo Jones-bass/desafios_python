@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from repository.database import db
 from datetime import datetime, timedelta
 from db_models.payment import Payment
+from payments.pix import Pix
 
 app = Flask(__name__)
 
@@ -21,6 +22,19 @@ def create_payment_pix():
     expiration_date = datetime.now() + timedelta(minutes=30)
 
     new_payment = Payment(value=data["value"], expiration_date=expiration_date)
+
+    pix_obj = Pix()
+
+    data_payment_pix = pix_obj.create_payment()
+
+    data_payment_pix = pix_obj.create_payment()
+
+
+    try:
+        new_payment.bank_payment_id = data_payment_pix["bank_payment_id"]
+        new_payment.qr_code = data_payment_pix["qr_code_path"]
+    except KeyError as e:
+        return jsonify({"message": f"Missing key in Pix response: {str(e)}"}), 500
 
     db.session.add(new_payment)
     db.session.commit()
