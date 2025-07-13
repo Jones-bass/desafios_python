@@ -61,7 +61,9 @@ def pix_confirmation():
     if "bank_payment_id" not in data and "value" not in data:
         return jsonify({"message": "Invalid payment data"}), 400
 
-    payment = Payment.query.filter_by(bank_payment_id=data.get("bank_payment_id")).first()
+    payment = Payment.query.filter_by(
+        bank_payment_id=data.get("bank_payment_id")
+    ).first()
 
     if not payment or payment.paid:
         return jsonify({"message": "Payment not found"}), 404
@@ -100,6 +102,11 @@ def payment_pix_page(payment_id):
 @socketio.on("connect")
 def handle_connect():
     print("Client connected to the server")
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    print("Client has disconnected to the server")
 
 
 if __name__ == "__main__":
