@@ -26,6 +26,13 @@ page = 1
 page_size = 200
 all_items = []
 
+STATUS_MAP = {
+    "InProgress": "Em andamento",
+    "Attended": "Atendido",
+    "Canceled": "Cancelado",
+    "Blocked": "Bloqueado",
+}
+
 while True:
     payload = {
         "filter": {
@@ -61,7 +68,14 @@ while True:
         print("⚠️ Nenhum pedido encontrado nesta página.")
         break
 
+
     for order in orders:
+        # Traduz o status da lista retornada pela API
+        status_pt = ", ".join([
+            STATUS_MAP.get(status, status)
+            for status in (order.get("orderStatus") or [])
+        ])
+
         all_items.append({
             "Filial": order.get("branchCode"),
             "Pedido": order.get("orderCode"),
@@ -88,7 +102,7 @@ while True:
             "TipoFrete": order.get("freightType"),
             "CodigoTransportadora": order.get("shippingCompanyCode"),
             "NomeTransportadora": order.get("shippingCompanyName"),
-            "StatusPedido": order.get("status"),
+            "StatusPedido": status_pt,  # 👈 traduzido para PT-BR
             "TotalPedido": order.get("totalAmountOrder"),
             "Experiencia": order.get("experienceType"),
             "TemTransacaoPDV": order.get("hasPdvTransaction"),
@@ -99,6 +113,7 @@ while True:
             "VendedorCodigo": order.get("sellerCode"),
             "VendedorCPF_CNPJ": order.get("sellerCpfCnpj"),
         })
+
 
 
     # Verifica se há próxima página
@@ -123,3 +138,5 @@ else:
         df.to_excel(writer, index=False, sheet_name="Relatorio")
 
     print(f"✅ Relatório gerado com sucesso: {excel_file} ({len(df)} registros)")
+    print("DEBUG status list:", order.get("orderStatus"))
+
