@@ -16,7 +16,7 @@ headers = {
 }
 
 FILTERS_PAYLOAD = {
-    "branchs": [1,2,3,5,7],                       # Lista de códigos de filiais
+    "branchs": [3],                       # Lista de códigos de filiais
     "datemin": "2025-09-01T00:00:00Z",    # Data/Hora inicial no formato ISO 8601
     "datemax": "2025-09-30T23:59:59Z",    # Data/Hora final no formato ISO 8601
     # Outros filtros podem ser necessários (ex: tipo de operação)
