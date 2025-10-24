@@ -1,14 +1,15 @@
 import requests
 import pandas as pd
+import json
 from datetime import datetime, timezone
-
-# === CONFIGURAÇÕES ===
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+# === IMPORTA TOKEN DE AUTH ===
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
+# === CONFIGURAÇÕES DA API ===
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/general/v2/transactions"
 
 headers = {
@@ -16,47 +17,98 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === PARÂMETROS ===
-params = {
-    "BranchCode": "2",                   # código da filial
-    "TransactionCode": "39086",          # código da transação
-    "TransactionDate": "2025-10-07T00:00:00Z",
-    "Expand": "itemPromotionalEngines,originDestination"
+# === FILTROS / PARÂMETROS ===
+PARAMS = {
+    "BranchCode": "5",                     # Código da filial
+    "TransactionCode": "40608",            # Código da transação
+    "TransactionDate": "2025-10-21T00:00:00Z",  # Data da transação (ISO)
+    "Expand": "itemPromotionalEngines,originDestination",  # Expande detalhes
 }
 
-print("🔍 Buscando dados da transação...")
-response = requests.get(URL, headers=headers, params=params)
-print("Status:", response.status_code)
+print("🚀 Iniciando consulta detalhada da transação TOTVS...")
+print(f"📄 Parâmetros: {PARAMS}")
+
+# === REQUISIÇÃO ===
+response = requests.get(URL, headers=headers, params=PARAMS)
+print(f"📡 Status HTTP: {response.status_code}")
 
 if response.status_code != 200:
-    print("❌ Erro:", response.text)
-    exit()
+    print("❌ Erro ao consultar transação:")
+    print(response.text)
+    sys.exit(1)
 
-data = response.json()
+try:
+    data = response.json()
+except requests.exceptions.JSONDecodeError:
+    print("❌ Erro ao decodificar JSON da resposta.")
+    sys.exit(1)
+
+# === DEBUG: SALVAR JSON CRU (opcional, útil para inspeção) ===
+debug_file = f"debug_transaction_{PARAMS['TransactionCode']}.json"
+with open(debug_file, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+print(f"💾 Resposta completa salva em: {debug_file}")
+
+# === DEBUG: INSPEÇÃO DE CHAVES ===
+print("🔍 Estrutura principal da resposta:")
+for key, value in data.items():
+    tipo = type(value).__name__
+    tamanho = len(value) if isinstance(value, (list, dict)) else "-"
+    print(f"   - {key} ({tipo}) tamanho: {tamanho}")
+
+print("-" * 60)
 
 # === 1️⃣ DADOS PRINCIPAIS ===
 main_fields = {
-    "branchCode": data.get("branchCode"),
-    "transactionCode": data.get("transactionCode"),
-    "transactionDate": data.get("transactionDate"),
-    "customerCode": data.get("customerCode"),
-    "operationCode": data.get("operationCode"),
-    "sellerCode": data.get("sellerCode"),
-    "guideCode": data.get("guideCode"),
-    "paymentConditionCode": data.get("paymentConditionCode"),
-    "priceTableCode": data.get("priceTableCode"),
-    "status": data.get("status"),
-    "lastChangeDate": data.get("lastchangeDate")
+    "BranchCode": data.get("branchCode"),
+    "TransactionCode": data.get("transactionCode"),
+    "TransactionDate": data.get("transactionDate"),
+    "CustomerCode": data.get("customerCode"),
+    "OperationCode": data.get("operationCode"),
+    "SellerCode": data.get("sellerCode"),
+    "GuideCode": data.get("guideCode"),
+    "PaymentConditionCode": data.get("paymentConditionCode"),
+    "PriceTableCode": data.get("priceTableCode"),
+    "Status": data.get("status"),
+    "LastChangeDate": data.get("lastchangeDate"),
 }
+
 df_main = pd.DataFrame([main_fields])
+print(f"✅ Dados principais extraídos: {len(df_main.columns)} campos.")
 
-# === 2️⃣ ITENS ===
-df_items = pd.json_normalize(data.get("items", [])) if data.get("items") else pd.DataFrame()
+# === 2️⃣ ITENS (detalhes da venda) ===
+if data.get("items"):
+    df_items = pd.json_normalize(data["items"])
+    print(f"🧾 Total de itens encontrados: {len(df_items)}")
+else:
+    df_items = pd.DataFrame()
+    print("⚠️ Nenhum item encontrado na transação.")
 
+# === 3️⃣ CAMPOS EXPANDIDOS (opcional: promotionalEngines e originDestination) ===
+df_promos = pd.DataFrame()
+df_orig_dest = pd.DataFrame()
 
-# === 💾 SALVAR EM UM ÚNICO EXCEL ===
-with pd.ExcelWriter("transacao_completa.xlsx", engine="xlsxwriter") as writer:
-    df_main.to_excel(writer, index=False, sheet_name="Dados Principais")
-    df_items.to_excel(writer, index=False, sheet_name="Itens")
+if data.get("itemPromotionalEngines"):
+    df_promos = pd.json_normalize(data["itemPromotionalEngines"])
+    print(f"🎯 Total de promoções aplicadas: {len(df_promos)}")
 
-print("✅ Tudo salvo em: transacao_completa.xlsx")
+if data.get("originDestination"):
+    df_orig_dest = pd.json_normalize(data["originDestination"])
+    print(f"🚚 Total de origens/destinos: {len(df_orig_dest)}")
+
+# === 4️⃣ EXPORTAÇÃO PARA EXCEL ===
+excel_file = f"transacao_{PARAMS['BranchCode']}_{PARAMS['TransactionCode']}.xlsx"
+
+try:
+    with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
+        df_main.to_excel(writer, index=False, sheet_name="Dados Principais")
+        if not df_items.empty:
+            df_items.to_excel(writer, index=False, sheet_name="Itens")
+        if not df_promos.empty:
+            df_promos.to_excel(writer, index=False, sheet_name="Promocoes")
+        if not df_orig_dest.empty:
+            df_orig_dest.to_excel(writer, index=False, sheet_name="OrigemDestino")
+
+    print(f"✅ Relatório Excel gerado com sucesso: {excel_file}")
+except Exception as e:
+    print(f"❌ Erro ao exportar para Excel: {e}")

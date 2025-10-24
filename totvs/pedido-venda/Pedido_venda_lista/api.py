@@ -2,36 +2,28 @@ import requests
 from datetime import datetime, timezone
 import pandas as pd
 import json
-
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+# === CONFIGURAÇÕES DE PATH E TOKEN ===
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
-# === CONFIGURAÇÕES ===
+# === CONFIGURAÇÕES DA API ===
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sales-order/v2/orders/search"
-
-headers = {
+HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
 
-# Intervalo de datas
+# === PERÍODO DE CONSULTA ===
 start_date = datetime(2025, 9, 1, 0, 0, 0, tzinfo=timezone.utc)
 end_date = datetime(2025, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
 
-# Paginação
+# === PAGINAÇÃO ===
 page = 1
 page_size = 200
 all_items = []
-
-STATUS_MAP = {
-    "InProgress": "Em andamento",
-    "Attended": "Atendido",
-    "Canceled": "Cancelado",
-    "Blocked": "Bloqueado",
-}
 
 while True:
     payload = {
@@ -42,14 +34,14 @@ while True:
             },
             "startOrderDate": start_date.isoformat(),
             "endOrderDate": end_date.isoformat(),
-            "branchCodeList": [3]  # Ajuste conforme sua filial,
+            "branchCodeList": [3],  # ajuste conforme sua filial
         },
         "page": page,
         "pageSize": page_size
     }
 
-    resp = requests.post(URL, headers=headers, json=payload)
-    print(f"📄 Página {page} | Status: {resp.status_code}")
+    resp = requests.post(URL, headers=HEADERS, json=payload)
+    print(f"\n📄 Página {page} | Status: {resp.status_code}")
 
     if resp.status_code != 200:
         print("❌ Erro na requisição:", resp.text)
@@ -57,24 +49,20 @@ while True:
 
     data = resp.json()
 
-    # === DEBUG: mostra resumo do retorno
-    print("\n🪣 Retorno da API (primeiros 1000 caracteres):")
-    print(json.dumps(data, indent=2, ensure_ascii=False)[:1000])
-    print("------------------------------------------------------\n")
+    # === DEBUG: salvar JSON cru para inspeção se necessário ===
+    debug_file = f"debug_orders_page_{page}.json"
+    with open(debug_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"💾 JSON cru salvo em: {debug_file}")
 
-    # Extrai os pedidos do campo "items"
     orders = data.get("items", [])
     if not orders:
         print("⚠️ Nenhum pedido encontrado nesta página.")
         break
 
-
     for order in orders:
-        # Traduz o status da lista retornada pela API
-        status_pt = ", ".join([
-            STATUS_MAP.get(status, status)
-            for status in (order.get("orderStatus") or [])
-        ])
+        # ⚡ Status original direto da API
+        status = order.get("statusOrder")
 
         all_items.append({
             "Filial": order.get("branchCode"),
@@ -102,7 +90,7 @@ while True:
             "TipoFrete": order.get("freightType"),
             "CodigoTransportadora": order.get("shippingCompanyCode"),
             "NomeTransportadora": order.get("shippingCompanyName"),
-            "StatusPedido": status_pt,  # 👈 traduzido para PT-BR
+            "StatusPedido": status,  # ✅ pega exatamente da API
             "TotalPedido": order.get("totalAmountOrder"),
             "Experiencia": order.get("experienceType"),
             "TemTransacaoPDV": order.get("hasPdvTransaction"),
@@ -114,29 +102,33 @@ while True:
             "VendedorCPF_CNPJ": order.get("sellerCpfCnpj"),
         })
 
-
-
-    # Verifica se há próxima página
     if not data.get("hasNext", False):
+        print("✅ Paginação finalizada.")
         break
+
     page += 1
 
-# === EXPORTAÇÃO PARA EXCEL ===
+# === EXPORTAÇÃO PARA EXCEL COM TRATAMENTO DE DATAS E VALORES ===
 df = pd.DataFrame(all_items)
 
 if df.empty:
     print("⚠️ Nenhum registro encontrado no período.")
 else:
-    for col in df.columns:
-        if any(x in col.lower() for x in ["date", "pedido"]):
+    # Conversão de datas apenas para colunas de data
+    date_cols = ["DataInsercao", "DataPedido", "DataChegada", "DataUltimaAlteracao"]
+    for col in date_cols:
+        if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
-        elif any(x in col.lower() for x in ["valor", "peso", "quantidade", "qtde"]):
+    
+    # Conversão de valores apenas para colunas numéricas
+    numeric_cols = ["Quantidade", "ValorBruto", "ValorDesconto", "ValorLiquido",
+                    "ValorFrete", "TotalPedido"]
+    for col in numeric_cols:
+        if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    excel_file = "relatorio_totvs_items.xlsx"
-    with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Relatorio")
+    # StatusPedido permanece string, exatamente como vem da API
+    excel_file = "relatorio_totvs.xlsx"
+    df.to_excel(excel_file, index=False, sheet_name="Relatorio")
 
     print(f"✅ Relatório gerado com sucesso: {excel_file} ({len(df)} registros)")
-    print("DEBUG status list:", order.get("orderStatus"))
-

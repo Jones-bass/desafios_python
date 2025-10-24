@@ -1,11 +1,12 @@
 import requests
 from datetime import datetime, timezone
 import pandas as pd
-
+import json
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+# === CONFIGURAÇÃO DE PATH E TOKEN ===
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sales-order/v2/invoices"
@@ -20,7 +21,7 @@ headers = {"Authorization": f"Bearer {TOKEN}"}
 
 # === REQUISIÇÃO ===
 resp = requests.get(URL, params=params, headers=headers)
-print("Status:", resp.status_code)
+print("Status da requisição:", resp.status_code)
 
 if resp.status_code != 200:
     print("❌ Erro na requisição:", resp.text)
@@ -28,9 +29,14 @@ if resp.status_code != 200:
 
 data = resp.json()
 
+# === DEBUG: salvar JSON cru para inspeção ===
+debug_file = f"debug_invoices_order_{params['OrderCode']}.json"
+with open(debug_file, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+print(f"💾 JSON cru salvo em: {debug_file}")
+
 # Lista de notas fiscais
 invoices = data.get("invoices", [])
-
 if not invoices:
     print("⚠️ Nenhuma nota fiscal encontrada.")
     exit()
@@ -39,6 +45,7 @@ if not invoices:
 items = []
 for nf in invoices:
     elec = nf.get("electronic", {})
+        
     items.append({
         "Filial": nf.get("transactionBranchCode"),
         "Pedido": data.get("orderCode"),
@@ -69,15 +76,15 @@ for nf in invoices:
 # Cria DataFrame
 df = pd.DataFrame(items)
 
-# Converte datas e valores
+# Conversão de datas e valores
 for col in df.columns:
-    if "date" in col.lower() or "emissao" in col.lower() or "autorizacao" in col.lower():
+    if any(x in col.lower() for x in ["date", "emissao", "autorizacao", "transacao"]):
         df[col] = pd.to_datetime(df[col], errors="coerce")
-    elif "valor" in col.lower() or "peso" in col.lower() or "qtde" in col.lower():
+    elif any(x in col.lower() for x in ["valor", "peso", "qtde"]):
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# Salva em Excel (.xlsx) com pandas
-excel_file = "relatorio_notas.xlsx"
+# Salva em Excel (.xlsx)
+excel_file = "relatorio_notas_debug.xlsx"
 with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
     df.to_excel(writer, index=False, sheet_name="Notas")
 
