@@ -1,37 +1,39 @@
 import requests
 import pandas as pd
 from datetime import datetime, timezone
-
+import json
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+# Caminho para importar o TOKEN
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
-URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/document-types/search" 
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/document-types/search"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
 
+# === FILTROS DE CONSULTA ===
 FILTERS_PAYLOAD = {
-    "branchs": [3],                       # Lista de códigos de filiais
-    "datemin": "2025-09-01T00:00:00Z",    # Data/Hora inicial no formato ISO 8601
-    "datemax": "2025-09-30T23:59:59Z",    # Data/Hora final no formato ISO 8601
-    # Outros filtros podem ser necessários (ex: tipo de operação)
+    "branchs": [3],
+    "datemin": "2025-09-01T00:00:00Z",
+    "datemax": "2025-09-30T23:59:59Z",
+    # "operations": [1],
+    # "sellers": [100],
 }
 
 # === PAGINAÇÃO ===
 page = 1
 page_size = 500
 all_payment_details = []
-all_summaries = [] 
+all_summaries = []
 
-print("🚀 Iniciando consulta de Vendas por Forma de Pagamento...")
+print("🚀 Iniciando consulta de Vendas por Forma de Pagamento (com Debug)...")
 
 while True:
-    # Montando o payload para a requisição POST (sem a chave "filter")
     payload = {
         "branchs": FILTERS_PAYLOAD.get("branchs", []),
         "datemin": FILTERS_PAYLOAD.get("datemin"),
@@ -39,10 +41,13 @@ while True:
         "page": page,
         "pageSize": page_size
     }
-    
+
+    if 'operations' in FILTERS_PAYLOAD:
+        payload['operations'] = FILTERS_PAYLOAD['operations']
+    if 'sellers' in FILTERS_PAYLOAD:
+        payload['sellers'] = FILTERS_PAYLOAD['sellers']
 
     print(f"\n💳 Consultando página {page} de pagamentos…")
-    
     resp = requests.post(URL, headers=headers, json=payload)
     print(f"📡 Status: {resp.status_code}")
 
@@ -52,29 +57,46 @@ while True:
 
     try:
         data = resp.json()
-        
-        # 1. Extração dos Detalhes de Pagamento
-        payment_items = data.get("dataRow", []) 
-        items_to_check = payment_items # Usamos esta lista para controle de loop
-
-        # --- Processamento do Resumo ---
-        # Armazena o resumo apenas na primeira página
-        if page == 1:
-            all_summaries.append({
-                "invoiceQuantity": data.get("invoiceQuantity"),
-                "ValorLiquido": data.get("invoiceValue"),
-                "itemQuantity": data.get("itemQuantity"),
-            })
-
     except requests.exceptions.JSONDecodeError:
         print("❌ Erro ao decodificar JSON da resposta.")
         break
 
+    # === DEBUG: salvar resposta completa ===
+    debug_file = f"debug_response_payment_page_{page}.json"
+    with open(debug_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"💾 Resposta salva em: {debug_file}")
+
+    # === DEBUG: mostrar estrutura da resposta ===
+    print("🔍 Estrutura da resposta:")
+    for key, value in data.items():
+        tipo = type(value).__name__
+        tam = len(value) if isinstance(value, (list, dict)) else "1"
+        print(f"   - {key}: {tipo} ({tam})")
+
+    # === DEBUG: amostra parcial do conteúdo ===
+    print("🧩 Amostra do conteúdo (primeiros 1200 caracteres):")
+    print(json.dumps(data, indent=2, ensure_ascii=False)[:1200])
+    print("-" * 60)
+
+    # === Extração dos dados ===
+    payment_items = data.get("dataRow", [])
+    items_to_check = payment_items
+
+    # --- Resumo (primeira página apenas) ---
+    if page == 1:
+        summary = {
+            "invoiceQuantity": data.get("invoiceQuantity"),
+            "ValorLiquido": data.get("invoiceValue"),
+            "itemQuantity": data.get("itemQuantity"),
+        }
+        all_summaries.append(summary)
+
     if not items_to_check:
         print("✅ Paginação concluída (não há mais dados).")
         break
-    
-    # Processa os itens de pagamento
+
+    # --- Processamento dos itens ---
     for item in payment_items:
         all_payment_details.append({
             "TipoDocumentoPagamento": item.get("payment_document_type"),
@@ -82,25 +104,31 @@ while True:
             "BranchCode_Filtro": FILTERS_PAYLOAD.get("branchs", [None])[0],
         })
 
-    if len(payment_items) < page_size:
-        print("✅ Paginação concluída (última página preenchida parcialmente).")
+    # === PAGINAÇÃO ===
+    total_pages = data.get("totalPages") or data.get("pages") or None
+    if total_pages:
+        print(f"📖 Página {page}/{total_pages}")
+        if page >= total_pages:
+            print("✅ Todas as páginas foram processadas.")
+            break
+    elif len(payment_items) < page_size:
+        print("✅ Última página (parcialmente preenchida).")
         break
-    
+
     page += 1
-    
+
+# === EXPORTAÇÃO ===
 df_details = pd.DataFrame(all_payment_details)
 df_summary = pd.DataFrame(all_summaries)
 
-print("-" * 30)
-
+print("-" * 40)
 if df_details.empty:
     print("⚠️ Nenhum dado de pagamento encontrado para exportar.")
 else:
-    start_date = FILTERS_PAYLOAD.get("datemin").split('T')[0]
-    end_date = FILTERS_PAYLOAD.get("datemax").split('T')[0]
-    excel_file = f"vendas_por_pagamento_{start_date}_a_{end_date}.xlsx"
-    
-    # Exporta para Excel com abas separadas
+    start_date = FILTERS_PAYLOAD["datemin"].split("T")[0]
+    end_date = FILTERS_PAYLOAD["datemax"].split("T")[0]
+    excel_file = f"vendas_por_pagamento_debug_{start_date}_a_{end_date}.xlsx"
+
     try:
         with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
             df_details.to_excel(writer, sheet_name="DetalhesPagamento", index=False)
@@ -109,7 +137,7 @@ else:
             if not df_summary.empty:
                 df_summary.to_excel(writer, sheet_name="ResumoGeral", index=False)
                 print("Resumo Geral exportado.")
-        
+
         print(f"✅ Relatório gerado: {excel_file}")
     except Exception as e:
         print(f"❌ Erro ao exportar para Excel: {e}")

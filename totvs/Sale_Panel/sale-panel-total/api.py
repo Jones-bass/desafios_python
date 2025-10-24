@@ -1,33 +1,27 @@
 import requests
 import pandas as pd
 from datetime import datetime, timezone
-
+import json
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+# Caminho para importar o token
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
-URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/branch-ranking/search" 
+SALES_COMPARATIVE_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/totals/search"
 
-# === CONFIGURAÇÕES DA API DE VENDAS (COMPARATIVO) ===
-# Mantendo a mesma URL, pois o retorno pode variar com os filtros ou parâmetros.
-SALES_COMPARATIVE_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/totals/search" 
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
 
-# === FILTROS DE CONSULTA (PAYLOAD) ===
-# ⚠️ AJUSTE ESTES VALORES PARA SUA NECESSIDADE ⚠️
-# Para um comparativo anual, você deve consultar o período do ANO ATUAL.
-# A API se encarrega de buscar o ano anterior (dataRowLastYear) com base neste filtro.
 FILTERS_PAYLOAD = {
-    "branchs": [5],                       # Lista de códigos de filiais
-    "datemin": "2025-09-01T00:00:00Z",    # Início do período (Ano Atual)
-    "datemax": "2025-09-30T23:59:59Z",    # Fim do período (Ano Atual)
-    # "operations": [1],                  # Exemplo de filtro opcional
-    # "sellers": [100],                   # Exemplo de filtro opcional
+    "branchs": [5],                       # Filial
+    "datemin": "2025-09-01T00:00:00Z",    # Início do período
+    "datemax": "2025-09-30T23:59:59Z",    # Fim do período
+    # "operations": [1],                  # Exemplo opcional
+    # "sellers": [100],
 }
 
 # === PAGINAÇÃO ===
@@ -35,12 +29,10 @@ page = 1
 page_size = 500
 all_sales_current = []
 all_sales_last_year = []
-all_sales_summaries = [] # Para armazenar dados de resumo do retorno (se houver)
 
 print("🚀 Iniciando consulta de Vendas (Comparativo Anual)...")
 
 while True:
-    # Montando o payload sem a chave "filter"
     payload = {
         "branchs": FILTERS_PAYLOAD.get("branchs", []),
         "datemin": FILTERS_PAYLOAD.get("datemin"),
@@ -48,15 +40,13 @@ while True:
         "page": page,
         "pageSize": page_size
     }
-    
-    # Adicionando filtros opcionais
+
     if 'operations' in FILTERS_PAYLOAD:
         payload['operations'] = FILTERS_PAYLOAD['operations']
     if 'sellers' in FILTERS_PAYLOAD:
         payload['sellers'] = FILTERS_PAYLOAD['sellers']
 
-    print(f"\n⏰ Consultando página {page} de dados comparativos…")
-    
+    print(f"\n⏰ Consultando página {page}...")
     resp = requests.post(SALES_COMPARATIVE_URL, headers=headers, json=payload)
     print(f"📡 Status: {resp.status_code}")
 
@@ -66,42 +56,52 @@ while True:
 
     try:
         data = resp.json()
-        
-        # 1. Extração do Ano Atual
-        current_items = data.get("dataRow", []) 
-        
-        # 2. Extração do Ano Passado
-        last_year_items = data.get("dataRowLastYear", [])
-        
-        # Usamos 'current_items' para controle de paginação
-        items_to_check = current_items 
-
     except requests.exceptions.JSONDecodeError:
         print("❌ Erro ao decodificar JSON da resposta.")
         break
 
-    if not items_to_check and page == 1:
+    # === DEBUG: salvar resposta bruta ===
+    debug_file = f"debug_response_page_{page}.json"
+    with open(debug_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"💾 Resposta salva em: {debug_file}")
+
+    # === DEBUG: estrutura da resposta ===
+    print("🔍 Estrutura da resposta:")
+    for key, value in data.items():
+        tipo = type(value).__name__
+        tam = len(value) if isinstance(value, (list, dict)) else "1"
+        print(f"   - {key}: {tipo} ({tam})")
+
+    # === DEBUG: mostra parte do JSON ===
+    print("🧩 Amostra do conteúdo (primeiros 1200 caracteres):")
+    print(json.dumps(data, indent=2, ensure_ascii=False)[:1200])
+    print("-" * 50)
+
+    # === Extração dos dados ===
+    current_items = data.get("dataRow", [])
+    last_year_items = data.get("dataRowLastYear", [])
+
+    if not current_items and page == 1:
         print("⚠️ Nenhuma venda encontrada para o período atual e filtros aplicados.")
         break
-    
-    if not items_to_check and page > 1:
+    if not current_items and page > 1:
         print("✅ Paginação concluída (não há mais dados).")
         break
-    
-    
-    # Processa os itens do ANO ATUAL
+
+    # ANO ATUAL
     for item in current_items:
         all_sales_current.append({
             "Ano": "Atual",
             "Qtd": item.get("invoice_qty"),
             "ValorLiquido": item.get("invoice_value"),
-            "Itens_Qty": item.get("itens_qty"),
-            "TicketMedio": item.get("tm"),       # Ticket Médio
-            "Pca-Atendida": item.get("pa"),       # Peças por Atendimento
-            "PMPV": item.get("pmpv"),   # Preço Médio por Peça Vendida
+            "QtdItens": item.get("itens_qty"),
+            "TicketMedio": item.get("tm"),
+            "PcaAtendida": item.get("pa"),
+            "PMPV": item.get("pmpv"),
         })
 
-    # Processa os itens do ANO PASSADO
+    # ANO PASSADO
     for item in last_year_items:
         all_sales_last_year.append({
             "Ano": "Anterior",
@@ -113,39 +113,38 @@ while True:
             "PMPV": item.get("pmpv"),
         })
 
-    # Controle de Paginação:
-    # Assumimos que a ausência de itens (current_items vazio) ou um total de itens que atinge o pageSize para a página
-    # Controla a quebra do loop.
-    if len(current_items) < page_size:
-        print("✅ Paginação concluída (última página preenchida parcialmente).")
+    # === PAGINAÇÃO: verifica se há mais páginas ===
+    total_pages = data.get("totalPages") or data.get("pages") or None
+
+    if total_pages:
+        print(f"📖 Página {page}/{total_pages}")
+        if page >= total_pages:
+            print("✅ Todas as páginas foram processadas.")
+            break
+    elif len(current_items) < page_size:
+        print("✅ Última página (parcialmente preenchida).")
         break
-    
+
     page += 1
-    
+
 # --- EXPORTAÇÃO ---
 df_current = pd.DataFrame(all_sales_current)
 df_last_year = pd.DataFrame(all_sales_last_year)
 
 print("-" * 30)
-
 if df_current.empty and df_last_year.empty:
     print("⚠️ Nenhum dado de vendas para exportar.")
 else:
-    start_date = FILTERS_PAYLOAD.get("datemin").split('T')[0]
-    end_date = FILTERS_PAYLOAD.get("datemax").split('T')[0]
+    start_date = FILTERS_PAYLOAD["datemin"].split("T")[0]
+    end_date = FILTERS_PAYLOAD["datemax"].split("T")[0]
     excel_file = f"vendas_comparativo_{start_date}_a_{end_date}.xlsx"
-    
-    # Exporta para Excel com duas abas
+
     try:
         with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
             if not df_current.empty:
                 df_current.to_excel(writer, sheet_name="AnoAtual", index=False)
-                print(f"Total de registros Ano Atual: {len(df_current)}")
-            
             if not df_last_year.empty:
                 df_last_year.to_excel(writer, sheet_name="AnoAnterior", index=False)
-                print(f"Total de registros Ano Anterior: {len(df_last_year)}")
-        
         print(f"✅ Relatório gerado: {excel_file}")
     except Exception as e:
         print(f"❌ Erro ao exportar para Excel: {e}")
