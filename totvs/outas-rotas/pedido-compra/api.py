@@ -1,224 +1,113 @@
-import os
+import requests
+from datetime import datetime, timezone
 import pandas as pd
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+import json
+import sys
+import os
 
-# === Caminhos ===
-caminho_excel = r"D:\Search\desafios_python\romaneio\pedido.xlsx"
-caminho_pasta_imagens = r"D:\Search\desafios_python\romaneio\photos"
-caminho_logo = r"D:\Search\desafios_python\romaneio\logo.jpg"
+# === CONFIGURAÇÕES DE PATH E TOKEN ===
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from auth.config import TOKEN
 
-# === Lê o Excel ===
-df = pd.read_excel(caminho_excel)
-
-# === Extrai informações do primeiro registro ===
-info = df.iloc[0]
-codigo_pedido = str(info["PEDIDO"]) if "PEDIDO" in df.columns and pd.notna(info["PEDIDO"]) else "SEM_PEDIDO"
-
-# === Caminho dinâmico de saída ===
-caminho_pdf_saida = fr"D:\Search\desafios_python\romaneio\romaneio_{codigo_pedido}.pdf"
-
-# === Estilos ===
-styles = getSampleStyleSheet()
-
-titulo_style = ParagraphStyle(
-    "titulo",
-    parent=styles["Title"],
-    fontSize=14,
-    alignment=TA_LEFT,
-    spaceAfter=4
-)
-
-subtitulo_style = ParagraphStyle(
-    "subtitulo",
-    parent=styles["Normal"],
-    fontSize=8,
-    alignment=TA_LEFT,
-    textColor=colors.HexColor("#333333"),
-    spaceAfter=6,
-)
-
-# Estilo reduzido e centralizado para totais
-estilo_total = ParagraphStyle(
-    "total_menor",
-    parent=styles["Normal"],
-    fontSize=5.5,
-    alignment=TA_CENTER,
-    spaceAfter=0,
-    spaceBefore=0,
-)
-
-# Estilo para texto com quebra controlada
-wrap_style = ParagraphStyle(
-    "wrap",
-    parent=styles["Normal"],
-    fontSize=6,
-    leading=7,
-    alignment=TA_CENTER,
-    wordWrap="LTR",
-)
-
-header_style = ParagraphStyle(
-    "header",
-    parent=styles["Normal"],
-    fontSize=6.5,
-    leading=7,
-    alignment=TA_CENTER,
-    textColor=colors.black,
-    wordWrap="LTR",
-)
-
-espacador = Spacer(1, 2)
-elementos = []
-
-# === Cabeçalho com logo e título lado a lado ===
-nome_cliente = str(info["CLIENTE"]) if "CLIENTE" in df.columns and pd.notna(info["CLIENTE"]) else ""
-codigo_cliente = str(info["COD"]) if "COD" in df.columns and pd.notna(info["COD"]) else ""
-codigo_condpgto = str(info["CONDPGTO"]) if "CONDPGTO" in df.columns and pd.notna(info["CONDPGTO"]) else ""
-codigo_parcelas = str(info["QTD-PARCELAS"]) if "QTD-PARCELAS" in df.columns and pd.notna(info["QTD-PARCELAS"]) else ""
-codigo_transport = str(info["TRANSPORT"]) if "TRANSPORT" in df.columns and pd.notna(info["TRANSPORT"]) else ""
-codigo_cnpj = str(info["CNPJ"]) if "CNPJ" in df.columns and pd.notna(info["CNPJ"]) else ""
-codigo_cidade = str(info["CIDADE"]) if "CIDADE" in df.columns and pd.notna(info["CIDADE"]) else ""
-codigo_uf = str(info["UF"]) if "UF" in df.columns and pd.notna(info["UF"]) else ""
-
-titulo = Paragraph("<b>PEDIDO DE VENDA</b>", titulo_style)
-subtitulo = Paragraph(f"<b>PEDIDO:</b> {codigo_pedido} &nbsp;&nbsp;&nbsp; <b>CLIENTE:</b> {codigo_cliente} - {nome_cliente}", subtitulo_style)
-pgto = Paragraph(f"<b>FORMA DE PGTO:</b> {codigo_parcelas}", subtitulo_style)
-transport = Paragraph(f"<b>TRANSPORT:</b> {codigo_transport}", subtitulo_style)
-end = Paragraph(f"<b>CNPJ:</b> {codigo_cnpj} &nbsp;&nbsp;&nbsp; <b>CIDADE:</b> {codigo_cidade} &nbsp;&nbsp;&nbsp; <b>UF:</b> {codigo_uf}", subtitulo_style)
-bloco_texto = [titulo, subtitulo, pgto, transport, end]
-
-if os.path.exists(caminho_logo):
-    logo = Image(caminho_logo, width=60, height=60)
-else:
-    logo = Paragraph(" ", styles["Normal"])
-
-tabela_topo = Table([[bloco_texto, logo]], colWidths=[440, 60])
-tabela_topo.setStyle(TableStyle([
-    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ("ALIGN", (0, 0), (0, 0), "LEFT"),   
-    ("LEFTPADDING", (0, 0), (0, 0), -20),  
-    ("RIGHTPADDING", (0, 0), (0, 0), 4),
-    ("ALIGN", (1, 0), (1, 0), "RIGHT"),  
-]))
-
-elementos.append(tabela_topo)
-elementos.append(espacador)
-
-# === Colunas a exibir ===
-colunas_exibir = [
-    "IMAGEM", "PRODUTO", "TAMANHO", "COR", "COLECAO",
-    "REFERENCIA", "FAMILIA", "QTD-SOLICITADA", "VLR-SOLICITADO"
-]
-
-nomes_cabecalho = {
-    "IMAGEM": "FOTO",
-    "PRODUTO": "DESCRIÇÃO DO PRODUTO",
-    "TAMANHO": "TAM.",
-    "COR": "COR",
-    "COLECAO": "COLEÇÃO",
-    "REFERENCIA": "REF.",
-    "FAMILIA": "FAMÍLIA",
-    "QTD-SOLICITADA": "QTD",
-    "VLR-SOLICITADO": "VALOR (R$)"
+# === CONFIGURAÇÕES DA API ===
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/purchase-order/v2/search"  # 🔁 rota de compra
+HEADERS = {
+    "Authorization": f"Bearer {TOKEN}",
+    "Content-Type": "application/json"
 }
 
-# Cria cabeçalho formatado com Paragraphs
-cabecalho = [[Paragraph(nomes_cabecalho.get(c, c), header_style) for c in colunas_exibir]]
-dados_tabela = []
 
-# === Gera as linhas da tabela ===
-for _, linha in df.iterrows():
-    linha_dados = []
-    for col in colunas_exibir:
-        if col == "IMAGEM":
-            nome_img = str(linha[col]).strip() if pd.notna(linha[col]) else ""
-            caminho_img = os.path.join(caminho_pasta_imagens, f"{nome_img}.jpg")
-            if os.path.exists(caminho_img):
-                linha_dados.append(Image(caminho_img, width=35, height=35))
-            else:
-                linha_dados.append(Paragraph("-", wrap_style))
+# === PAGINAÇÃO ===
+page = 1
+page_size = 100
+all_items = []
 
-        elif col == "VLR-SOLICITADO":
-            try:
-                valor = float(linha[col])
-                valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            except:
-                valor_formatado = "R$ 0,00"
-            linha_dados.append(Paragraph(valor_formatado, wrap_style))
+while True:
+    payload = {
+        "filter": {
+            "change": {
+                "startDate": "2025-09-01T00:00:00Z",
+                "endDate": "2025-09-30T00:00:00Z",
+            },
+            "branchCodeList": [2],  
+        },
+        "page": page,
+        "pageSize": page_size
+    }
 
-        elif col == "QTD-SOLICITADA":
-            qtd = str(linha[col]) if pd.notna(linha[col]) else ""
-            linha_dados.append(Paragraph(qtd, wrap_style))
 
-        else:
-            valor = str(linha[col]) if pd.notna(linha[col]) else ""
-            linha_dados.append(Paragraph(valor, wrap_style))
+    resp = requests.post(URL, headers=HEADERS, json=payload)
+    print(f"\n📄 Página {page} | Status: {resp.status_code}")
 
-    dados_tabela.append(linha_dados)
+    if resp.status_code != 200:
+        print("❌ Erro na requisição:", resp.text)
+        break
 
-# === Soma total ===
-total_qtd = df["QTD-SOLICITADA"].sum() if "QTD-SOLICITADA" in df.columns else 0
-total_valor = df["VLR-SOLICITADO"].sum() if "VLR-SOLICITADO" in df.columns else 0
+    data = resp.json()
 
-total_qtd_formatado = f"{int(total_qtd)}"
-total_valor_formatado = f"R$ {total_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    # === DEBUG opcional ===
+    debug_file = f"debug_purchase_page_{page}.json"
+    with open(debug_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"💾 JSON cru salvo em: {debug_file}")
 
-linha_total = [
-    "",  # IMAGEM
-    Paragraph("<b>TOTAL GERAL</b>", estilo_total),
-    "", "", "", "", "",  # colunas intermediárias
-    Paragraph(f"<b>{total_qtd_formatado}</b>", estilo_total),
-    Paragraph(f"<b>{total_valor_formatado}</b>", estilo_total),
-]
-dados_tabela.append(linha_total)
+    orders = data.get("items", [])
+    if not orders:
+        print("⚠️ Nenhum pedido encontrado nesta página.")
+        break
 
-# === Monta tabela com alinhamento de cabeçalho ===
-larguras_colunas = [45, 160, 30, 60, 50, 45, 45, 40, 70]
-altura_cabecalho = 16
+    for order in orders:
+        all_items.append({
+            "Filial": order.get("branchCode"),
+            "Pedido": order.get("orderCode"),
+            "CodigoFornecedor": order.get("supplierCode"),
+            "Fornecedor": order.get("supplierName"),
+            "CNPJ_Fornec": order.get("supplierCpfCnpj"),
+            "CodigoComprador": order.get("buyerCode"),
+            "Comprador": order.get("buyerName"),
+            "Operacao": order.get("operationName"),
+            "CodigoOperacao": order.get("operationCode"),
+            "Transportadora": order.get("shippingCompanyName"),
+            "CondicaoPagamento": order.get("paymentConditionName"),
+            "CodigoCondicaoPagamento": order.get("paymentConditionCode"),
+            "TipoPagamento": order.get("paymentType"),
+            "Status": order.get("status"),
+            "TipoFrete": order.get("freightType"),
+            "DataRegistro": order.get("registrationDate"),
+            "PrevisaoEntrega": order.get("deliveryForecastDate"),
+            "LimiteEntrega": order.get("deliveryDeadlineDate"),
+            "DataBasePagamento": order.get("basePaymentDate"),
+            "ValorProduto": order.get("productValue"),
+            "IPI": order.get("ipiValue"),
+            "Quantidade": order.get("quantity"),
+            "TotalPedido": order.get("totalAmountOrder")
+        })
 
-tabela = Table(cabecalho + dados_tabela, repeatRows=1, colWidths=larguras_colunas)
-tabela.setStyle(TableStyle([
-    # Cabeçalho
-    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-    ("VALIGN", (0, 0), (-1, 0), "MIDDLE"),
-    ("FONTSIZE", (0, 0), (-1, 0), 6.5),
-    ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
-    ("TOPPADDING", (0, 0), (-1, 0), 4),
+    if not data.get("hasNext", False):
+        print("✅ Paginação finalizada.")
+        break
 
-    # Corpo
-    ("ALIGN", (0, 1), (-1, -1), "CENTER"),
-    ("VALIGN", (0, 1), (-1, -1), "MIDDLE"),
-    ("FONTSIZE", (0, 1), (-1, -1), 6),
-    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+    page += 1
 
-    # Linha total
-    ("BACKGROUND", (0, -1), (-1, -1), colors.whitesmoke),
-    ("SPAN", (0, -1), (1, -1)),
-    ("ALIGN", (0, -1), (-1, -1), "CENTER"),
-    ("VALIGN", (0, -1), (-1, -1), "MIDDLE"),
-]))
+# === EXPORTAÇÃO PARA EXCEL ===
+df = pd.DataFrame(all_items)
 
-# Força altura visual uniforme no cabeçalho
-tabela._argH[0] = altura_cabecalho
+if df.empty:
+    print("⚠️ Nenhum registro encontrado no período.")
+else:
+    # Conversão de datas
+    date_cols = ["DataRegistro", "PrevisaoEntrega", "LimiteEntrega", "DataBasePagamento"]
+    for col in date_cols:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors="coerce")
 
-elementos.append(tabela)
+    # Conversão de valores numéricos
+    numeric_cols = ["ValorProduto", "IPI", "Quantidade", "TotalPedido"]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# === Cria PDF ===
-pdf = SimpleDocTemplate(
-    caminho_pdf_saida,
-    pagesize=A4,
-    leftMargin=5,   # antes era 15 → recua 10 pontos (~3,5 mm)
-    rightMargin=15,
-    topMargin=20,
-    bottomMargin=20,
-)
-pdf.build(elementos)
+    excel_file = "relatorio_compras.xlsx"
+    df.to_excel(excel_file, index=False, sheet_name="Relatorio")
 
-print("✅ PDF com cabeçalho alinhado e layout profissional gerado com sucesso!")
-print(f"📂 Arquivo salvo em: {caminho_pdf_saida}")
+    print(f"✅ Relatório gerado com sucesso: {excel_file} ({len(df)} registros)")
