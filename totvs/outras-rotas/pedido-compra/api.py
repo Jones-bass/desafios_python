@@ -11,11 +11,11 @@ from auth.config import TOKEN
 
 # === CONFIGURAÇÕES DA API ===
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/purchase-order/v2/search"  # 🔁 rota de compra
+
 HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
-
 
 # === PAGINAÇÃO ===
 page = 1

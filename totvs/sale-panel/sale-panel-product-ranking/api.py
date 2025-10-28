@@ -10,24 +10,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES DA API ===
-CLASSIFICATION_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/product-classifications/search"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/product-classifications/search"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
 
-# === FILTROS ===
-FILTERS_PAYLOAD = {
-    "branchs": [5],
-    "datemin": "2025-09-01T00:00:00Z",
-    "datemax": "2025-09-30T23:59:59Z",
-    "classification_type_code": "102",  # ⚠️ Trocar pelo código correto (ex: 101=Marca, 102=Grupo, etc.)
-}
-
-# === PAGINAÇÃO ===
 page = 1
-page_size = 500
+page_size = 100
 all_classification_details = []
 all_summaries = []
 
@@ -35,16 +26,16 @@ print("🚀 Iniciando consulta de Vendas por Classificação de Produto (com DEB
 
 while True:
     payload = {
-        "branchs": FILTERS_PAYLOAD["branchs"],
-        "datemin": FILTERS_PAYLOAD["datemin"],
-        "datemax": FILTERS_PAYLOAD["datemax"],
-        "classification_type_code": FILTERS_PAYLOAD["classification_type_code"],
+        "branchs": [5],
+        "datemin": "2025-09-01T00:00:00Z",
+        "datemax": "2025-09-30T23:59:59Z",
+        "classification_type_code": "102", 
         "page": page,
         "pageSize": page_size
     }
 
     print(f"\n🏷️ Consultando página {page} de classificações…")
-    resp = requests.post(CLASSIFICATION_URL, headers=headers, json=payload)
+    resp = requests.post(URL, headers=headers, json=payload)
     print(f"📡 Status HTTP: {resp.status_code}")
 
     if resp.status_code != 200:
@@ -93,9 +84,7 @@ while True:
             "CodigoClassificacao": item.get("classification_code"),
             "NomeClassificacao": item.get("classification_name"),
             "ValorVenda": item.get("invoice_value"),
-            "QuantidadeItens": item.get("item_quantity"),
-            "BranchCode_Filtro": FILTERS_PAYLOAD["branchs"][0],
-            "TipoClassificacao_Filtro": FILTERS_PAYLOAD["classification_type_code"]
+            "QuantidadeItens": item.get("item_quantity")
         })
 
     # === Controle de Paginação ===
@@ -120,9 +109,7 @@ print("=" * 50)
 if df_details.empty:
     print("⚠️ Nenhum dado encontrado para exportar.")
 else:
-    start_date = FILTERS_PAYLOAD["datemin"].split("T")[0]
-    end_date = FILTERS_PAYLOAD["datemax"].split("T")[0]
-    excel_file = f"vendas_classificacao_debug_{FILTERS_PAYLOAD['classification_type_code']}_{start_date}_a_{end_date}.xlsx"
+    excel_file = f"vendas_classificacao.xlsx"
 
     try:
         with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:

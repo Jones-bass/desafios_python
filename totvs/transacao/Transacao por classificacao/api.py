@@ -23,7 +23,7 @@ PARAMS = {
     "StartChangeDate": "2025-10-01T00:00:00Z",
     "EndChangeDate": "2025-10-30T23:59:59Z",
     "Page": 1,
-    "PageSize": 1000
+    "PageSize": 100
 }
 
 print("🚀 Iniciando consulta de Tipos de Classificação (TRAFM101)...")

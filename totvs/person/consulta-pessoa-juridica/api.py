@@ -17,7 +17,6 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === CORPO DA REQUISIÇÃO (exemplo simplificado) ===
 payload = {
     "filter": {
         "change": {

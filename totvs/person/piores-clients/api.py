@@ -17,9 +17,8 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === CORPO DA REQUISIÇÃO ===
 payload = {
-    "branchs": [2]  # 🔹 Código(s) das empresas
+    "branchs": [2]  
 }
 
 print("🚀 Iniciando consulta de Ranking de Clientes Devedores (Painel Financeiro)...")

@@ -19,8 +19,8 @@ headers = {
 }
 
 # === CONFIGURAÇÃO DE CONSULTA ===
-PAGE_SIZE = 500
 page = 1
+PAGE_SIZE = 100
 all_records = []
 
 # 🔹 Parâmetros de exemplo — personalize conforme necessário

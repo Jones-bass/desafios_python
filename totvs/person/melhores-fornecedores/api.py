@@ -17,9 +17,8 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === CORPO DA REQUISIÇÃO ===
 payload = {
-    "branchs": [5],  # 🔹 Código(s) da(s) empresa(s)
+    "branchs": [5],  
     "datemin": "2025-09-01T00:00:00Z",
     "datemax": "2025-09-30T23:59:59Z"
 }

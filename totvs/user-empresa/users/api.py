@@ -18,7 +18,6 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === PARÂMETROS INICIAIS ===
 PAGE_SIZE = 100
 page = 1
 all_records = []

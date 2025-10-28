@@ -17,11 +17,10 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === FILTROS / PARÂMETROS ===
 PARAMS = {
-    "BranchCode": "5",                     # Código da filial
-    "TransactionCode": "40608",            # Código da transação
-    "TransactionDate": "2025-10-21T00:00:00Z",  # Data da transação (ISO)
+    "BranchCode": "2",                     # Código da filial
+    "TransactionCode": "41248",            # Código da transação
+    "TransactionDate": "2025-10-28T00:00:00Z",  # Data da transação (ISO)
     "Expand": "itemPromotionalEngines,originDestination",  # Expande detalhes
 }
 

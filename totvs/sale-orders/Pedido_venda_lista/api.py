@@ -16,11 +16,6 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# === PERÍODO DE CONSULTA ===
-start_date = datetime(2025, 9, 1, 0, 0, 0, tzinfo=timezone.utc)
-end_date = datetime(2025, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
-
-# === PAGINAÇÃO ===
 page = 1
 page_size = 200
 all_items = []
@@ -29,11 +24,11 @@ while True:
     payload = {
         "filter": {
             "change": {
-                "startDate": start_date.isoformat(),
-                "endDate": end_date.isoformat()
+                "start_date": "2024-01-01T00:00:00Z",
+                "end_date": "2025-10-26T23:59:59Z",
             },
-            "startOrderDate": start_date.isoformat(),
-            "endOrderDate": end_date.isoformat(),
+            "startOrderDate": "2024-01-01T00:00:00Z",
+            "endOrderDate": "2025-10-26T23:59:59Z",
             "branchCodeList": [3],  # ajuste conforme sua filial
         },
         "page": page,

@@ -16,25 +16,21 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# === PARÂMETROS OPCIONAIS ===
-start_date = datetime(2025, 9, 1, 0, 0, 0, tzinfo=timezone.utc)
-end_date = datetime(2025, 10, 8, 23, 59, 59, tzinfo=timezone.utc)
-
+PAGE = 1
 PAGE_SIZE = 100
-page = 1
 all_records = []
 
 while True:
     params = {
-        "Page": page,
-        "PageSize": PAGE_SIZE,
         "Order": "operationCode",
-        "StartChangeDate": start_date.isoformat(),
-        "EndChangeDate": end_date.isoformat(),
-        "Expand": "calculations,values,balances,classifications"
+        "StartChangeDate": "2025-09-01T00:00:00Z",
+        "EndChangeDate": "2025-09-30T00:00:00Z",
+        "Expand": "calculations,values,balances,classifications",
+        "Page": PAGE,
+        "PageSize": PAGE_SIZE
     }
-
-    print(f"\n📄 Buscando página {page} de operações...")
+    
+    print(f"\n📄 Buscando página {PAGE} de operações...")
 
     resp = requests.get(URL, headers=HEADERS, params=params)
     print("📡 Status HTTP:", resp.status_code)
@@ -50,7 +46,7 @@ while True:
         break
 
     # === SALVAR JSON CRU PARA DEBUG ===
-    debug_file = f"debug_operations_page_{page}.json"
+    debug_file = f"debug_operations_page_{PAGE}.json"
     with open(debug_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     print(f"💾 JSON cru salvo em: {debug_file}")
@@ -69,14 +65,14 @@ while True:
         break
 
     all_records.extend(records)
-    print(f"✅ Página {page}: {len(records)} registros coletados")
+    print(f"✅ Página {PAGE}: {len(records)} registros coletados")
 
     # Paginação
     if len(records) < PAGE_SIZE or not data.get("hasNext", False):
         print("✅ Paginação finalizada.")
         break
 
-    page += 1
+    PAGE += 1
     time.sleep(0.3)
 
 # === CRIAÇÃO DO DATAFRAME ===
@@ -97,3 +93,4 @@ else:
 
     print(f"✅ Total de registros coletados: {len(df_main)}")
     print(f"📂 Arquivos gerados: {excel_file}")
+

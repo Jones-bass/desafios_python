@@ -10,17 +10,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES DA API ===
-FISCAL_MOVEMENT_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/fiscal-movement/search"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/fiscal-movement/search"
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
-}
-
-# === FILTROS ===
-FILTERS_PAYLOAD = {
-    "branchCodeList": [5],
-    "startMovementDate": "2025-09-01T00:00:00Z",
-    "endMovementDate": "2025-09-30T23:59:59Z",
 }
 
 # === PAGINAÇÃO ===
@@ -34,16 +27,16 @@ print("🚀 Iniciando consulta de Movimentos Fiscais (Analytics + DEBUG)...")
 while True:
     payload = {
         "filter": {
-            "branchCodeList": FILTERS_PAYLOAD.get("branchCodeList", []),
-            "startMovementDate": FILTERS_PAYLOAD.get("startMovementDate"),
-            "endMovementDate": FILTERS_PAYLOAD.get("endMovementDate"),
+            "branchCodeList": 2,
+            "startMovementDate": "2025-09-01T00:00:00Z",
+            "endMovementDate": "2025-09-30T00:00:00Z",
         },
         "page": page,
         "pageSize": page_size,
     }
 
     print(f"\n📄 Consultando página {page} de movimentos fiscais…")
-    resp = requests.post(FISCAL_MOVEMENT_URL, headers=headers, json=payload)
+    resp = requests.post(URL, headers=headers, json=payload)
     print(f"📡 Status: {resp.status_code}")
 
     if resp.status_code != 200:
@@ -129,9 +122,7 @@ print("-" * 40)
 if df_movements.empty:
     print("⚠️ Nenhum dado encontrado para exportar.")
 else:
-    start_date = FILTERS_PAYLOAD["startMovementDate"].split("T")[0]
-    end_date = FILTERS_PAYLOAD["endMovementDate"].split("T")[0]
-    excel_file = f"movimentos_fiscais_{start_date}_a_{end_date}.xlsx"
+    excel_file = f"movimentos_fiscais.xlsx"
 
     try:
         with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:

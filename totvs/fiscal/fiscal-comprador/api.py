@@ -10,17 +10,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES DA API ===
-GENERIC_ENTITY_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/buyer-fiscal-movement/search"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/buyer-fiscal-movement/search"
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
-}
-
-# === FILTROS ===
-FILTERS_PAYLOAD = {
-    "branchCodeList": [5],
-    "startMovementDate": "2025-09-01T00:00:00Z",
-    "endMovementDate": "2025-09-30T23:59:59Z",
 }
 
 # === PAGINAÇÃO ===
@@ -34,16 +27,16 @@ print("🚀 Iniciando consulta de Entidades Genéricas (Analytics + DEBUG)...")
 while True:
     payload = {
         "filter": {
-            "branchCodeList": FILTERS_PAYLOAD.get("branchCodeList", []),
-            "startMovementDate": FILTERS_PAYLOAD.get("startMovementDate"),
-            "endMovementDate": FILTERS_PAYLOAD.get("endMovementDate"),
+            "branchCodeList": 2,
+            "startMovementDate": "2025-09-01T00:00:00Z",
+            "endMovementDate": "2025-09-30T00:00:00Z",
         },
         "page": page,
         "pageSize": page_size,
     }
 
     print(f"\n📄 Consultando página {page} de entidades…")
-    resp = requests.post(GENERIC_ENTITY_URL, headers=headers, json=payload)
+    resp = requests.post(URL, headers=headers, json=payload)
     print(f"📡 Status: {resp.status_code}")
 
     if resp.status_code != 200:

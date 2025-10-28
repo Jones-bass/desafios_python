@@ -19,8 +19,8 @@ headers = {
 }
 
 # === FILTROS DE CONSULTA ===
-PAGE_SIZE = 500
 page = 1
+PAGE_SIZE = 100
 all_records = []
 
 # ⚙️ Aqui você define os parâmetros corporativos que deseja consultar

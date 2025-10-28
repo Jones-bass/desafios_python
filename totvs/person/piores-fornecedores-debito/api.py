@@ -17,7 +17,6 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === CORPO DA REQUISIÇÃO ===
 payload = {
     "branchs": [2]  # Empresas que deseja consultar
 }

@@ -16,14 +16,6 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === FILTROS ===
-FILTERS_PAYLOAD = {
-    "branchCodeList": [5],
-    "startMovementDate": "2025-09-01T00:00:00Z",
-    "endMovementDate": "2025-09-30T23:59:59Z",
-    "classificationTypeCodeList": [102]  # exemplo de filtro de classificação
-}
-
 # === PAGINAÇÃO ===
 page = 1
 page_size = 500
@@ -35,12 +27,12 @@ print("🚀 Iniciando consulta de Pessoas (Analytics + DEBUG)...")
 while True:
     payload = {
         "filter": {
-            "branchCodeList": FILTERS_PAYLOAD.get("branchCodeList", []),
-            "startMovementDate": FILTERS_PAYLOAD.get("startMovementDate"),
-            "endMovementDate": FILTERS_PAYLOAD.get("endMovementDate"),
+            "branchCodeList": [2],
+            "startMovementDate": "2025-09-01T00:00:00Z",
+            "endMovementDate": "2025-09-30T00:00:00Z",
         },
         "option": {
-            "classificationTypeCodeList": FILTERS_PAYLOAD.get("classificationTypeCodeList", [])
+            "classificationTypeCodeList": [102]
         },
         "page": page,
         "pageSize": page_size,

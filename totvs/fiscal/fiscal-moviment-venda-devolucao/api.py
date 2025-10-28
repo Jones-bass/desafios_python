@@ -9,33 +9,28 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES DA API ===
-SALES_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/branch-sale"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/branch-sale"
 headers = {
     "Authorization": f"Bearer {TOKEN}"
 }
 
-# === FILTROS / QUERY PARAMETERS ===
-branch_cnpj = "45877608000137"  # exemplo, 14 caracteres
-start_date = "2025-09-01T00:00:00Z"
-end_date = "2025-09-01T23:59:59Z"
-
 page = 1
-page_size = 500  # entre 1 e 1000
+page_size = 100  # entre 1 e 1000
 all_sales = []
 
 print("🚀 Iniciando consulta de Vendas via Query Parameters...")
 
 while True:
     params = {
-        "BranchCnpj": branch_cnpj,
-        "StartDate": start_date,
-        "EndDate": end_date,
+        "BranchCnpj": "45877608000137",
+        "start_date": "2025-09-01T00:00:00Z",
+        "end_date": "2025-09-30T23:59:59Z",
         "Page": page,
         "PageSize": page_size
     }
 
     print(f"\n📄 Consultando página {page} de vendas…")
-    resp = requests.get(SALES_URL, headers=headers, params=params)
+    resp = requests.get(URL, headers=headers, params=params)
     print(f"📡 Status: {resp.status_code}")
 
     if resp.status_code != 200:

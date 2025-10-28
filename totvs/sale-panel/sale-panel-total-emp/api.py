@@ -15,15 +15,6 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === FILTROS DE CONSULTA (PAYLOAD) ===
-FILTERS_PAYLOAD = {
-    "branchs": [5],                       # Filial
-    "datemin": "2025-09-01T00:00:00Z",
-    "datemax": "2025-09-30T23:59:59Z",
-    # "operations": [1],
-    # "sellers": [100],
-}
-
 page = 1
 page_size = 500
 all_sales_current = []
@@ -36,17 +27,12 @@ print("🚀 Iniciando consulta de Vendas (Comparativo por Filial com Debug)...")
 
 while True:
     payload = {
-        "branchs": FILTERS_PAYLOAD.get("branchs", []),
-        "datemin": FILTERS_PAYLOAD.get("datemin"),
-        "datemax": FILTERS_PAYLOAD.get("datemax"),
+        "branchs": [5],                      
+        "datemin": "2025-09-01T00:00:00Z",
+        "datemax": "2025-09-30T23:59:59Z",
         "page": page,
         "pageSize": page_size
     }
-
-    if 'operations' in FILTERS_PAYLOAD:
-        payload['operations'] = FILTERS_PAYLOAD['operations']
-    if 'sellers' in FILTERS_PAYLOAD:
-        payload['sellers'] = FILTERS_PAYLOAD['sellers']
 
     print(f"\n⏰ Consultando página {page} de dados comparativos (filial)…")
     resp = requests.post(URL, headers=headers, json=payload)
@@ -149,9 +135,7 @@ print("-" * 40)
 if df_current.empty and df_last_year.empty:
     print("⚠️ Nenhum dado de vendas para exportar.")
 else:
-    start_date = FILTERS_PAYLOAD["datemin"].split("T")[0]
-    end_date = FILTERS_PAYLOAD["datemax"].split("T")[0]
-    excel_file = f"vendas_comparativo_filial_debug_{start_date}_a_{end_date}.xlsx"
+    excel_file = f"vendas_comparativo_filial.xlsx"
 
     try:
         with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:

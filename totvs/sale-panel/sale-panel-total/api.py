@@ -9,19 +9,11 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
-SALES_COMPARATIVE_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/totals/search"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/totals/search"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
-}
-
-FILTERS_PAYLOAD = {
-    "branchs": [5],                       # Filial
-    "datemin": "2025-09-01T00:00:00Z",    # Início do período
-    "datemax": "2025-09-30T23:59:59Z",    # Fim do período
-    # "operations": [1],                  # Exemplo opcional
-    # "sellers": [100],
 }
 
 # === PAGINAÇÃO ===
@@ -34,20 +26,15 @@ print("🚀 Iniciando consulta de Vendas (Comparativo Anual)...")
 
 while True:
     payload = {
-        "branchs": FILTERS_PAYLOAD.get("branchs", []),
-        "datemin": FILTERS_PAYLOAD.get("datemin"),
-        "datemax": FILTERS_PAYLOAD.get("datemax"),
+        "branchs": [5],                       # Filial
+        "datemin": "2025-09-01T00:00:00Z",    # Início do período
+        "datemax": "2025-09-30T23:59:59Z",  
         "page": page,
         "pageSize": page_size
     }
 
-    if 'operations' in FILTERS_PAYLOAD:
-        payload['operations'] = FILTERS_PAYLOAD['operations']
-    if 'sellers' in FILTERS_PAYLOAD:
-        payload['sellers'] = FILTERS_PAYLOAD['sellers']
-
     print(f"\n⏰ Consultando página {page}...")
-    resp = requests.post(SALES_COMPARATIVE_URL, headers=headers, json=payload)
+    resp = requests.post(URL, headers=headers, json=payload)
     print(f"📡 Status: {resp.status_code}")
 
     if resp.status_code != 200:
@@ -135,9 +122,7 @@ print("-" * 30)
 if df_current.empty and df_last_year.empty:
     print("⚠️ Nenhum dado de vendas para exportar.")
 else:
-    start_date = FILTERS_PAYLOAD["datemin"].split("T")[0]
-    end_date = FILTERS_PAYLOAD["datemax"].split("T")[0]
-    excel_file = f"vendas_comparativo_{start_date}_a_{end_date}.xlsx"
+    excel_file = f"vendas_comparativo.xlsx"
 
     try:
         with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:

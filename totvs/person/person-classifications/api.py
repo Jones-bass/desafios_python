@@ -17,11 +17,10 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === PARÂMETROS DE CONSULTA (QUERY PARAMS) ===
 params = {
     "StartChangeDate": "2024-01-01T00:00:00Z",
     "EndChangeDate": "2025-10-26T23:59:59Z",
-    "TypeCodeList": [1, 2, 3, 4, 5],   # Lista de códigos de tipo de classificação
+    "TypeCodeList": [1, 2, 3, 4, 5],  
     "Page": 1,
     "PageSize": 100
 }

@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES DA API ===
-SALES_DETAIL_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/hours/search"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/sale-panel/v2/hours/search"
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
@@ -49,7 +49,7 @@ while True:
         payload['sellers'] = FILTERS_PAYLOAD['sellers']
 
     print(f"\n⏰ Consultando página {page} de vendas detalhadas…")
-    resp = requests.post(SALES_DETAIL_URL, headers=headers, json=payload)
+    resp = requests.post(URL, headers=headers, json=payload)
     print(f"📡 Status: {resp.status_code}")
 
     if resp.status_code != 200:
