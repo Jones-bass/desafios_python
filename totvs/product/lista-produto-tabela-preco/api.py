@@ -9,45 +9,50 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
+# === FUNÇÃO AUXILIAR ===
+def safe_list(value):
+    """Garante que o retorno seja sempre uma lista."""
+    return value if isinstance(value, list) else []
+
 # === CONFIGURAÇÕES ===
-URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/product/v2/prices/search"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/product/v2/price-tables/search"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
 
-print("🚀 Consultando preços de produtos...")
+print("🚀 Consultando tabela de preços dos produtos...")
 
-# === REQUEST BODY CORRIGIDO ===
+# === REQUEST BODY ===
 payload = {
     "filter": {
         "change": {
-            "startDate": "2025-09-01T00:00:00Z",
+            "startDate": "2022-09-01T00:00:00Z",
             "endDate": "2025-09-30T23:59:59Z",
             "inBranchInfo": True,
-            "branchInfoCodeList": [1],
+            "branchInfoCodeList": [2],
+            
         },
+        "branchInfo": {
+            "branchCode": 2,
+            "isActive": True
+        }
     },
     "option": {
-        "prices": [
-            {
-                "branchCode": 1,           
-                "priceCodeList": [1],       
-                "isPromotionalPrice": True,
-                "isScheduledPrice": True
-            }
-        ],
+        "branchCodeList": [2],
+        "priceTableCode": 1
     },
-    "order": "productCode",
-    "expand": ""
+    "page": 1,
+    "pageSize": 100,
+    "order": "productCode"
 }
 
 # === REQUISIÇÃO POST ===
 try:
-    response = requests.post(URL, headers=headers, json=payload, timeout=60)
+    response = requests.post(URL, headers=headers, json=payload, timeout=90)
 except requests.exceptions.RequestException as e:
-    print(f"❌ Erro na conexão: {e}")
+    print(f"❌ Erro na conexão com a API: {e}")
     sys.exit(1)
 
 print(f"📡 Status HTTP: {response.status_code}")
@@ -64,7 +69,7 @@ except requests.exceptions.JSONDecodeError:
     sys.exit(1)
 
 # === SALVA DEBUG ===
-debug_file = f"debug_product_prices_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+debug_file = f"debug_price_tables_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 with open(debug_file, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 print(f"💾 Debug salvo em: {debug_file}")
@@ -72,15 +77,14 @@ print(f"💾 Debug salvo em: {debug_file}")
 # === PROCESSA RESPOSTA ===
 items = data.get("items", [])
 if not items:
-    print("⚠️ Nenhum produto retornado pela API.")
+    print("⚠️ Nenhum item retornado pela API.")
     sys.exit(0)
 
-# === TABELA PRINCIPAL: PRODUTOS ===
 produtos = []
 precos = []
 
 for item in items:
-    produto = {
+    produtos.append({
         "productCode": item.get("productCode"),
         "productName": item.get("productName"),
         "productSku": item.get("productSku"),
@@ -88,38 +92,25 @@ for item in items:
         "colorCode": item.get("colorCode"),
         "colorName": item.get("colorName"),
         "sizeName": item.get("sizeName"),
-        "maxChangeFilterDate": item.get("maxChangeFilterDate")
-    }
-    produtos.append(produto)
+        "maxChangeFilterDate": item.get("maxChangeFilterDate"),
+        "referenceId": item.get("referenceId")
+    })
 
-    # === PREÇOS ===
-    for preco in item.get("prices", []):
+    for preco in safe_list(item.get("prices")):
         precos.append({
             "productCode": item.get("productCode"),
-            "priceCode": preco.get("priceCode"),
-            "priceName": preco.get("priceName"),
+            "branchCode": preco.get("branchCode"),
+            "originalPrice": preco.get("originalPrice"),
             "price": preco.get("price"),
-            "promotionalPrice": preco.get("promotionalPrice"),
-            "promotionalDescription": (
-                preco.get("promotionalInformation", {}).get("description")
-                if preco.get("promotionalInformation") else None
-            ),
-            "promoStartDate": (
-                preco.get("promotionalInformation", {}).get("startDate")
-                if preco.get("promotionalInformation") else None
-            ),
-            "promoEndDate": (
-                preco.get("promotionalInformation", {}).get("endDate")
-                if preco.get("promotionalInformation") else None
-            )
+            "scaleCode": preco.get("scaleCode")
         })
 
-# === CONVERTE EM DATAFRAMES ===
+# === CONVERTE PARA DATAFRAMES ===
 df_produtos = pd.DataFrame(produtos)
 df_precos = pd.DataFrame(precos)
 
 # === EXPORTA PARA EXCEL ===
-excel_file = f"product_prices_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+excel_file = f"price_tables_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
     df_produtos.to_excel(writer, index=False, sheet_name="Produtos")
     if not df_precos.empty:

@@ -32,8 +32,6 @@ payload = {
             "branchCode": 1,
         }
     },
-    "page": 1,
-    "pageSize": 100,
     "order": "productCode"
 }
 
@@ -58,7 +56,7 @@ except requests.exceptions.JSONDecodeError:
     sys.exit(1)
 
 # === SALVA DEBUG ===
-debug_file = f"debug_product_codes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+debug_file = f"debug_product_codes.json"
 with open(debug_file, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 print(f"💾 Debug salvo em: {debug_file}")
