@@ -22,8 +22,6 @@ params = {
     "startChangeDate": "2024-10-01T00:00:00Z",
     "endChangeDate": "2025-10-28T23:59:59Z",
     "typeCodeList": [102],  # exemplo: listar tipos de classificação específicos
-    "page": 1,
-    "pageSize": 100
 }
 
 print("🚀 Consultando classificações de produtos...")

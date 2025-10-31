@@ -21,8 +21,6 @@ headers = {
 params = {
     "startChangeDate": "2023-10-01T00:00:00Z",
     "endChangeDate": "2025-10-28T23:59:59Z",     
-    "page": 1,
-    "pageSize": 100,
     "order": "-code,maxChangeFilterDate"
 }
 
