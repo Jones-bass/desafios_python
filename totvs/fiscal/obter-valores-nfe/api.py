@@ -8,7 +8,7 @@ from datetime import datetime
 
 # === IMPORTA TOKEN DE AUTH ===
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from auth.config import TOKEN  # Certifique-se de que auth/config.py existe
+from auth.config import TOKEN 
 
 # === CONFIGURAÇÕES GERAIS ===
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/fiscal/v2/invoices/search"
@@ -20,54 +20,76 @@ HEADERS = {
 
 # === FUNÇÕES UTILITÁRIAS ===
 def log(msg: str):
-    print(f"[{msg}")
+    # Adicionando timestamp para melhor rastreamento
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-def make_payload() -> Dict[str, Any]:
-    """Cria o payload de busca completo (sem paginação)."""
+# Apenas UMA definição de make_payload que aceita paginação.
+def make_payload(page: int = 1, pageSize: int = 100) -> Dict[str, Any]:
+    """Cria o payload de busca com paginação."""
     return {
         "filter": {
-            "branchCodeList": [5],
+            "branchCodeList": [3],
             "operationType": "Output",
-            "operationCodeList": [5102, 5103, 5105, 5952, 701, 702, 7101, 6108, 111, 112, 151],
+            "operationCodeList": [
+                111, 112, 151, 701, 702, 5101, 5102, 5103, 5104, 5105, 5952, 7101, 6108 
+                ],
             "origin": "All",
             "eletronicInvoiceStatusList": ["Authorized"],
             "startIssueDate": "2025-09-01T00:00:00Z",
             "endIssueDate": "2025-09-30T23:59:59Z",
         },
+        "page": page,        
+        "pageSize": pageSize,  
         "order": "invoiceCode",
         "expand": "eletronic, shippingCompany, person, payments, items"
     }
 
 def fetch_all_invoices() -> List[Dict[str, Any]]:
-    """Busca todas as notas fiscais em uma única requisição."""
-    payload = make_payload()
-    try:
-        log("🔎 Enviando requisição única para buscar todas as notas fiscais...")
-        response = requests.post(URL, headers=HEADERS, json=payload, timeout=120)
-        response.raise_for_status()
-        data = response.json()
-        items = data.get("items", [])
-        log(f"✅ {len(items)} notas fiscais retornadas.")
-        return items
-    except requests.RequestException as e:
-        log(f"❌ Erro ao consultar notas fiscais: {e}")
-        return []
+    all_items = []
+    page = 1
+    page_size = 100 
 
-# === PROCESSAMENTO DE DADOS ===
+    log("🔎 Iniciando busca paginada por notas fiscais...")
+    while True:
+        payload = make_payload(page, page_size)
+        try:
+            log(f"   - Buscando página {page}...")
+            response = requests.post(URL, headers=HEADERS, json=payload, timeout=120)
+            response.raise_for_status()
+            data = response.json()
+            items = data.get("items", [])
+            
+            if not items:
+                log(f"   - Página {page} não retornou itens. Fim da busca.")
+                break 
+            
+            all_items.extend(items)
+            log(f"   - {len(items)} notas fiscais retornadas na página {page}. Total acumulado: {len(all_items)}")
+            
+            if len(items) < page_size:
+                log("   - Número de itens menor que o page_size. Fim da busca.")
+                break
+                
+            page += 1 
+
+        except requests.RequestException as e:
+            log(f"❌ Erro ao consultar notas fiscais na página {page}: {e}")
+            break 
+
+    log(f"✅ Total final de notas fiscais retornadas: {len(all_items)}")
+    return all_items
+
+
 def process_invoice(nf: Dict[str, Any]) -> Dict[str, Any]:
-    """Processa dados principais de uma nota fiscal, incluindo quantidade total de products."""
     eletronic = nf.get("eletronic", {}) or {}
     shipping = nf.get("shippingCompany", {}) or {}
     person = nf.get("person", {}) or {}
 
-    # Pagamento principal (pega o primeiro, se existir)
     pg_first = (nf.get("payments") or [{}])[0]
     card_info = pg_first.get("cardInformation", {}) or {}
 
-    # Pega os itens
     items = nf.get("items", []) or []
 
-    # Quantidade total de produtos na nota
     total_produtos = 0
     for item in items:
         for prod in item.get("products") or []:
@@ -100,6 +122,7 @@ def process_invoice(nf: Dict[str, Any]) -> Dict[str, Any]:
         "Valor_liquido": first_item.get("netValue"),
         "Valor_Bruto": first_item.get("unitGrossValue"),
         "Valor_Total": nf.get("totalValue"),
+  
         "Liquidacao": pg_first.get("documentType"),
         "Banco": card_info.get("cardOperatorName"),
         "Cartao": card_info.get("cardFlag"),
