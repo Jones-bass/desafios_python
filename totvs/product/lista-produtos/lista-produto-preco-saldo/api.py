@@ -4,19 +4,18 @@ import json
 from datetime import datetime
 import sys
 import os
+import time
 
 # === IMPORTA TOKEN DE AUTH ===
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 from auth.config import TOKEN
 
 # === FUNÇÃO AUXILIAR ===
 def safe_list(value):
-    """Garante que o retorno seja sempre uma lista."""
     return value if isinstance(value, list) else []
 
 # === CONFIGURAÇÕES ===
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/product/v2/balances/search"
-
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
@@ -24,71 +23,66 @@ headers = {
 
 print("🚀 Consultando saldos de produtos...")
 
-# === REQUEST BODY ===
-payload = {
-    "filter": {
-        "change": {
-            "startDate": "2025-09-01T00:00:00Z",
-            "endDate": "2025-09-30T23:59:59Z",
-            "inBranchInfo": True,
-            "branchInfoCodeList": [1],
+# === PAGINAÇÃO ===
+all_items = []
+page = 1
+page_size = 1000  
+
+while True:
+    payload = {
+        "filter": {
+            "change": {
+                "startDate": "2025-09-01T00:00:00Z",
+                "endDate": "2025-09-30T23:59:59Z",
+                "inBranchInfo": True,
+                "branchInfoCodeList": [1],
+            },
+            "branchInfo": {"branchCode": 1},
+            "classifications": [
+                {"type": 104, "codeList": ["001","002","003","004","005","006"]}
+            ]
         },
-        "branchInfo": {
-            "branchCode": 1
-        }
-    },
-    "option": {
-        "balances": [
-            {
-                "branchCode": 1,
-                "stockCodeList": [1]
-            }
-        ]
-    },
-    "page": 1,
-    "pageSize": 100,
-    "order": "productCode",
-    "expand": ""
-}
+        "option": {
+            "balances": [{"branchCode": 1, "stockCodeList": [1]}]
+        },
+        "order": "productCode",
+        "expand": "",
+        "page": page,
+        "pageSize": page_size
+    }
 
-# === REQUISIÇÃO POST ===
-try:
-    response = requests.post(URL, headers=headers, json=payload, timeout=60)
-except requests.exceptions.RequestException as e:
-    print(f"❌ Erro na conexão com a API: {e}")
-    sys.exit(1)
+    try:
+        response = requests.post(URL, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro na conexão: {e}")
+        sys.exit(1)
 
-print(f"📡 Status HTTP: {response.status_code}")
-if response.status_code != 200:
-    print("❌ Erro na resposta da API:")
-    print(response.text)
-    sys.exit(1)
+    items = data.get("items", [])
+    if not items:
+        break
 
-# === TRATAMENTO DO JSON ===
-try:
-    data = response.json()
-except requests.exceptions.JSONDecodeError:
-    print("❌ Erro ao decodificar JSON da resposta.")
-    sys.exit(1)
+    all_items.extend(items)
+
+    if not data.get("hasNext", False):
+        break
+
+    page += 1
+    time.sleep(0.2)
+
+print(f"✅ Total de produtos retornados: {len(all_items)}")
 
 # === SALVA DEBUG ===
-debug_file = f"debug_balances_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+debug_file = f"debug_balances_{datetime.now():%Y%m%d_%H%M%S}.json"
 with open(debug_file, "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+    json.dump(all_items, f, ensure_ascii=False, indent=2)
 print(f"💾 Debug salvo em: {debug_file}")
 
-# === PROCESSA RESPOSTA ===
-items = data.get("items", [])
-if not items:
-    print("⚠️ Nenhum produto retornado pela API.")
-    sys.exit(0)
+# === TRATAMENTO DOS DADOS ===
+produtos, saldos, localizacoes = [], [], []
 
-# === TABELAS ===
-produtos = []
-saldos = []
-localizacoes = []
-
-for item in items:
+for item in all_items:
     produtos.append({
         "productCode": item.get("productCode"),
         "productName": item.get("productName"),
@@ -131,7 +125,7 @@ df_saldos = pd.DataFrame(saldos)
 df_localizacoes = pd.DataFrame(localizacoes)
 
 # === EXPORTA PARA EXCEL ===
-excel_file = f"product_balances_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+excel_file = f"product_balances_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
 with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
     df_produtos.to_excel(writer, index=False, sheet_name="Produtos")
     if not df_saldos.empty:

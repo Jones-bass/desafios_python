@@ -6,7 +6,8 @@ import sys
 import os
 
 # === IMPORTA TOKEN DE AUTH ===
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+
 from auth.config import TOKEN
 
 # === FUNÇÃO AUXILIAR ===
@@ -29,10 +30,9 @@ payload = {
     "filter": {
         "change": {
             "startDate": "2022-09-01T00:00:00Z",
-            "endDate": "2025-09-30T23:59:59Z",
+            "endDate": "2025-10-31T23:59:59Z",
             "inBranchInfo": True,
             "branchInfoCodeList": [2],
-            
         },
         "branchInfo": {
             "branchCode": 2,
@@ -43,10 +43,8 @@ payload = {
         "branchCodeList": [2],
         "priceTableCode": 1
     },
-    "page": 1,
-    "pageSize": 100,
-    "order": "productCode"
 }
+
 
 # === REQUISIÇÃO POST ===
 try:

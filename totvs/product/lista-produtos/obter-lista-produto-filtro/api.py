@@ -6,7 +6,7 @@ import sys
 import os
 
 # === IMPORTA TOKEN DE AUTH ===
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES ===
@@ -30,7 +30,13 @@ payload = {
         },
         "branchInfo": {
             "branchCode": 1,
-        }
+        },
+        "classifications": [
+            {
+                "type": 104,
+                "codeList": ["001","002","003","004","005", "006" ]
+            }
+        ],
     },
     "order": "productCode"
 }
