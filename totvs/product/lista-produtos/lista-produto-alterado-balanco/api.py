@@ -29,25 +29,20 @@ payload = {
             "endDate": "2025-09-28T23:59:59Z",
             "balances": [
                 {
-                    "branchCode": 2,
+                    "branchCode": 1,
                     "stockCodeList": [1]
                 }
             ],
+            "branchInfo": {"branchCode": 1, "isActive": True},
             "classifications": [
-                {
-                    "type": 102,
-                    "codeList": ["V009"]
-                }
+                {"type": 104, "codeList": ["001","002","003","004","005","006"]}
             ]
         },
-        "hasStock": True
     },
     "option": {
         "isTransaction": True,
         "isSalesOrder": True,
     },
-    "page": 1,
-    "pageSize": 100,
     "order": "productCode"
 }
 

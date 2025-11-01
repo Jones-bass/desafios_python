@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES ===
-URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/product/v2/category"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/product/v2/classifications"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}",
@@ -19,12 +19,12 @@ headers = {
 
 # === PARÂMETROS ===
 params = {
-    "startChangeDate": "2023-10-01T00:00:00Z",
-    "endChangeDate": "2025-10-28T23:59:59Z",     
-    "order": "-code,maxChangeFilterDate"
+    "startChangeDate": "2024-01-01T00:00:00Z",
+    "endChangeDate": "2025-10-28T23:59:59Z",
+    "typeCodeList": [102],  # exemplo: listar tipos de classificação específicos
 }
 
-print("🚀 Consultando categorias de produtos...")
+print("🚀 Consultando classificações de produtos...")
 
 # === REQUISIÇÃO GET ===
 try:
@@ -47,7 +47,7 @@ except requests.exceptions.JSONDecodeError:
     sys.exit(1)
 
 # === SALVA DEBUG ===
-debug_file = f"debug_category_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+debug_file = f"debug_classifications_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 with open(debug_file, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 print(f"💾 Debug salvo em: {debug_file}")
@@ -55,25 +55,27 @@ print(f"💾 Debug salvo em: {debug_file}")
 # === PROCESSA DADOS ===
 items = data.get("items", [])
 if not items:
-    print("⚠️ Nenhuma categoria retornada pela API.")
+    print("⚠️ Nenhuma classificação retornada pela API.")
     sys.exit(0)
 
-categorias = []
+classificacoes = []
 for item in items:
-    categorias.append({
+    classificacoes.append({
+        "typeCode": item.get("typeCode"),
+        "typeName": item.get("typeName"),
+        "typeNameAux": item.get("typeNameAux"),
         "code": item.get("code"),
         "name": item.get("name"),
-        "parentCategoryCode": item.get("parentCategoryCode"),
-        "categoryType": item.get("categoryType"),
+        "nameAux": item.get("nameAux"),
         "maxChangeFilterDate": item.get("maxChangeFilterDate")
     })
 
 # === CONVERTE PARA DATAFRAME ===
-df_categorias = pd.DataFrame(categorias)
+df_classificacoes = pd.DataFrame(classificacoes)
 
 # === EXPORTA PARA EXCEL ===
-excel_file = f"product_categories_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+excel_file = f"product_classifications_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
-    df_categorias.to_excel(writer, index=False, sheet_name="Categorias")
+    df_classificacoes.to_excel(writer, index=False, sheet_name="Classificacoes")
 
 print(f"✅ Relatório Excel gerado com sucesso: {excel_file}")
