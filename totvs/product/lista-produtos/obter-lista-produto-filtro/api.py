@@ -28,9 +28,7 @@ payload = {
             "inBranchInfo": True,
             "branchInfoCodeList": [1],
         },
-        "branchInfo": {
-            "branchCode": 1,
-        },
+        "branchInfo": {"branchCode": 1, "isActive": True},
         "classifications": [
             {
                 "type": 104,

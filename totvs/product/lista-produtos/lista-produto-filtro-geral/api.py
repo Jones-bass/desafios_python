@@ -4,8 +4,10 @@ import json
 from datetime import datetime
 import sys
 import os
+import time # Mantido, caso queira adicionar paginação
 
 # === IMPORTA TOKEN DE AUTH ===
+# Assumindo que o path está correto
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
@@ -25,6 +27,7 @@ def export_to_excel(filename, dataframes):
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/product/v2/products/search"
 headers = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
+# === PAYLOAD (mantido inalterado) ===
 payload = {
     "filter": {
         "change": {
@@ -33,11 +36,14 @@ payload = {
             "inBranchInfo": True,
             "branchInfoCodeList": [1],
         },
+        "classifications": [
+            {"type": 104, "codeList": ["001","002","003","004","005","006"]}
+        ],
         "branchInfo": {"branchCode": 1, "isActive": True},
     },
+    # Adicionando 'expand' para garantir que os campos aninhados venham na resposta, se a API exigir
+    "expand": "additionalColorInformation,barCodes,classifications,additionalFields,suppliers,manufacturers,referenceCategories,referenceCodeSequences,webData,details,branchesProductBlocked,conservationInstructions",
     "option": {"branchInfoCode": 1},
-    "page": 1,
-    "pageSize": 100,
     "order": "productCode"
 }
 
@@ -63,7 +69,7 @@ if not items:
     print("⚠️ Nenhum produto retornado pela API.")
     sys.exit(0)
 
-# === LISTAS ===
+# === LISTAS (Mantidas) ===
 tabelas = {
     "Produtos": [],
     "Cores": [],
@@ -80,9 +86,11 @@ tabelas = {
     "Conservacao": []
 }
 
-# === PROCESSAMENTO ===
+# === PROCESSAMENTO (MODIFICADO) ===
 for item in items:
     pc = item.get("productCode")
+    
+    # === PRODUTOS: Mapeamento completo dos campos de nível superior do JSON de exemplo ===
     tabelas["Produtos"].append({
         "productCode": pc,
         "productSku": item.get("productSku"),
@@ -90,6 +98,7 @@ for item in items:
         "referenceCode": item.get("referenceCode"),
         "referenceName": item.get("referenceName"),
         "referenceId": item.get("referenceId"),
+        "lastReferenceCode": item.get("lastReferenceCode"), # NOVO CAMPO
         "gridCode": item.get("gridCode"),
         "colorCode": item.get("colorCode"),
         "colorName": item.get("colorName"),
@@ -98,18 +107,22 @@ for item in items:
         "ipi": item.get("ipi"),
         "cst": item.get("cst"),
         "cest": item.get("cest"),
+        "prefixEanGtin": item.get("prefixEanGtin"), # NOVO CAMPO
         "measuredUnit": item.get("measuredUnit"),
         "minimumStockAmount": item.get("minimumStockAmount"),
         "maximumStockAmount": item.get("maximumStockAmount"),
         "idealStockAmount": item.get("idealStockAmount"),
-        "salesStartDate": item.get("salesStartDate"),
-        "salesEndDate": item.get("salesEndDate"),
+        # Ajuste de case para SalesStartDate/EndDate conforme o JSON de exemplo
+        "salesStartDate": item.get("SalesStartDate"), 
+        "salesEndDate": item.get("SalesEndDate"),
         "isActive": item.get("isActive"),
         "isBlocked": item.get("isBlocked"),
         "isFinishedProduct": item.get("isFinishedProduct"),
         "isRawMaterial": item.get("isRawMaterial"),
         "isBulkMaterial": item.get("isBulkMaterial"),
         "isOwnProduction": item.get("isOwnProduction"),
+        "description": item.get("description"),      # NOVO CAMPO
+        "descriptive": item.get("descriptive"),      # NOVO CAMPO
         "maxChangeFilterDate": item.get("maxChangeFilterDate"),
     })
 
@@ -132,8 +145,9 @@ for item in items:
         for i in safe_list(item.get(chave)):
             tabelas[nome].append({"productCode": pc, **i})
 
-    # conservação tem subtabela
+    # conservação tem subtabela (Lógica mantida, já estava correta)
     for cons in safe_list(item.get("conservationInstructions")):
+        # Garante que campos como 'code', 'description' etc., venham na tabela
         base = {"productCode": pc, **{k: cons.get(k) for k in ("code", "description", "default", "grouperCode")}}
         for c in safe_list(cons.get("items")):
             tabelas["Conservacao"].append({**base, **c})

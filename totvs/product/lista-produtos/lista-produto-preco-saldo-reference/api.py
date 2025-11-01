@@ -6,7 +6,7 @@ import sys
 import os
 
 # === IMPORTA TOKEN DE AUTH ===
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 from auth.config import TOKEN
 
 # === FUNÇÃO AUXILIAR ===
@@ -33,13 +33,15 @@ payload = {
             "inBranchInfo": True, 
             "branchInfoCodeList": [1],  
         },
+    "classifications": [
+                    {"type": 104, "codeList": ["001","002","003","004","005","006"]}
+                ],
+    "branchInfo": {"branchCode": 1, "isActive": True},
     },
     "option": {
         "branchInfoCode": 1,
      
     },
-    "page": 1,
-    "pageSize": 100,
     "order": "referenceCode"
 }
 

@@ -37,7 +37,7 @@ while True:
                 "inBranchInfo": True,
                 "branchInfoCodeList": [1],
             },
-            "branchInfo": {"branchCode": 1},
+            "branchInfo": {"branchCode": 1, "isActive": True},
             "classifications": [
                 {"type": 104, "codeList": ["001","002","003","004","005","006"]}
             ]
