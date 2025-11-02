@@ -23,48 +23,57 @@ print(f"🚀 Consultando XML da NF-e (chave: {ACCESS_KEY})...")
 # === REQUISIÇÃO GET ===
 try:
     response = requests.get(URL, headers=HEADERS, timeout=60)
+    response.raise_for_status()
+    data = response.json()
 except requests.exceptions.RequestException as e:
     print(f"❌ Erro na conexão: {e}")
+    sys.exit(1)
+except json.JSONDecodeError:
+    print("❌ Erro ao decodificar JSON da resposta.")
     sys.exit(1)
 
 print(f"📡 Status HTTP: {response.status_code}")
 
-if response.status_code != 200:
-    print("❌ Erro na resposta da API:")
-    print(response.text)
-    sys.exit(1)
-
-# === TRATAMENTO DO JSON ===
-try:
-    data = response.json()
-except requests.exceptions.JSONDecodeError:
-    print("❌ Erro ao decodificar JSON da resposta.")
-    sys.exit(1)
-
 # === SALVA DEBUG ===
-debug_file = f"debug_invoice_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+debug_file = f"debug_invoice_{datetime.now():%Y%m%d_%H%M%S}.json"
 with open(debug_file, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 print(f"💾 Debug salvo em: {debug_file}")
 
-# === CAMPOS PRINCIPAIS ===
+# === CAMPOS ===
 processing_type = data.get("processingType")
 main_xml = data.get("mainInvoiceXml")
 cancel_xml = data.get("cancelInvoiceXml")
 
 print(f"📄 Status da NF-e: {processing_type}")
 
-# === SALVA XMLS ===
-if main_xml:
-    xml_file = f"nfe_main_{ACCESS_KEY}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml"
-    with open(xml_file, "w", encoding="utf-8") as f:
-        f.write(main_xml)
-    print(f"✅ XML principal salvo em: {xml_file}")
+# === FUNÇÃO PARA SALVAR XML (com detecção de base64) ===
+def save_xml(content, filename_prefix):
+    if not content:
+        return None
 
-if cancel_xml:
-    xml_cancel_file = f"nfe_cancel_{ACCESS_KEY}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml"
-    with open(xml_cancel_file, "w", encoding="utf-8") as f:
-        f.write(cancel_xml)
-    print(f"⚠️ XML de cancelamento salvo em: {xml_cancel_file}")
+    try:
+        # tenta decodificar base64
+        decoded = base64.b64decode(content).decode("utf-8", errors="ignore")
+        xml_content = decoded if decoded.strip().startswith("<") else content
+    except Exception:
+        xml_content = content  # caso não seja base64, salva como veio
+
+    filename = f"{filename_prefix}_{ACCESS_KEY}_{datetime.now():%Y%m%d_%H%M%S}.xml"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(xml_content)
+    return filename
+
+# === SALVA XML PRINCIPAL ===
+main_file = save_xml(main_xml, "nfe_main")
+if main_file:
+    print(f"✅ XML principal salvo em: {main_file}")
+else:
+    print("⚠️ Nenhum XML principal retornado pela API.")
+
+# === SALVA XML DE CANCELAMENTO ===
+cancel_file = save_xml(cancel_xml, "nfe_cancel")
+if cancel_file:
+    print(f"⚠️ XML de cancelamento salvo em: {cancel_file}")
 
 print("🏁 Consulta finalizada com sucesso.")
