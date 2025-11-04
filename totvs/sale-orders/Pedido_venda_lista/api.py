@@ -24,15 +24,11 @@ while True:
     payload = {
         "filter": {
             "change": {
-                "start_date": "2024-01-01T00:00:00Z",
-                "end_date": "2025-10-26T23:59:59Z",
+                "startDate": "2025-01-01T00:00:00Z",
+                "endDate": "2025-10-26T23:59:59Z",
             },
-            "startOrderDate": "2024-01-01T00:00:00Z",
-            "endOrderDate": "2025-10-26T23:59:59Z",
-            "branchCodeList": [3],  # ajuste conforme sua filial
+            "branchCodeList": [2],  # ajuste conforme sua filial
         },
-        "page": page,
-        "pageSize": page_size
     }
 
     resp = requests.post(URL, headers=HEADERS, json=payload)

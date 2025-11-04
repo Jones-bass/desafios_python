@@ -4,71 +4,50 @@ import json
 from datetime import datetime
 import sys
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# === IMPORTA TOKEN DE AUTH ===
+# === IMPORTA TOKEN ===
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from auth.config import TOKEN
 
-# === FUNÇÃO AUXILIAR ===
-def safe_list(value):
-    """Garante que o retorno seja sempre uma lista."""
-    return value if isinstance(value, list) else []
-
-# === CONFIGURAÇÕES ===
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/product/v2/kardex-movement"
 
-HEADERS = {
+headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
 }
 
-# === PARÂMETROS PADRÃO ===
-BRANCH_CODE = 5
-PRODUCT_CODES = [5118, 5120, 5145]   # 🔁 Você pode listar vários produtos aqui
-BALANCE_TYPE = 1
-START_DATE = "2025-05-01T00:00:00Z"
-END_DATE = "2025-09-30T23:59:59Z"
+print("🚀 Iniciando consulta paralela de movimentação de estoque (Kardex)...")
 
-# === FUNÇÃO PRINCIPAL ===
-def get_kardex(branch_code: int, product_code: int, start_date: str, end_date: str, balance_type: int):
-    """Consulta o Kardex de um produto específico."""
+# === LISTA DE PRODUTOS ===
+product_codes = list(range(1, 99))
+branch_code = 2
+
+# === INTERVALO DE DATAS ===
+start_date = "2025-10-30T00:00:00Z"
+end_date = "2025-10-31T23:59:59Z"
+
+# === FUNÇÃO PARA CONSULTAR UM PRODUTO ===
+def consultar_produto(code):
     params = {
         "BranchCode": branch_code,
-        "ProductCode": product_code,
+        "ProductCode": code,
         "StartDate": start_date,
         "EndDate": end_date,
-        "BalanceType": balance_type
+        "BalanceType": 1
     }
 
     try:
-        response = requests.get(URL, headers=HEADERS, params=params, timeout=90)
+        response = requests.get(URL, headers=headers, params=params, timeout=60)
+        if response.status_code == 204:
+            return None, None
         if response.status_code != 200:
-            print(f"❌ Erro HTTP {response.status_code} para produto {product_code}: {response.text}")
-            return None
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Erro de conexão para produto {product_code}: {e}")
-        return None
+            return None, None
 
-# === EXECUÇÃO ===
-todos_movimentos = []
+        data = response.json()
 
-for code in PRODUCT_CODES:
-    print(f"🚀 Consultando Kardex do produto {code} na empresa {BRANCH_CODE}...")
-    data = get_kardex(BRANCH_CODE, code, START_DATE, END_DATE, BALANCE_TYPE)
-
-    if not data or not safe_list(data.get("movements")):
-        print(f"⚠️ Nenhum movimento encontrado para o produto {code}.")
-        continue
-
-    # Salva debug individual
-    debug_file = f"debug_kardex_{code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(debug_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-    # Processa movimentos
-    for m in safe_list(data.get("movements")):
-        todos_movimentos.append({
+        produto = {
             "branchCode": data.get("branchCode"),
             "balanceType": data.get("balanceType"),
             "productCode": data.get("productCode"),
@@ -79,36 +58,59 @@ for code in PRODUCT_CODES:
             "colorCode": data.get("colorCode"),
             "colorDescription": data.get("colorDescription"),
             "sizeDescription": data.get("sizeDescription"),
-            "previousBalance": data.get("previousBalance"),
-            "movementDate": m.get("movementDate"),
-            "historyCode": m.get("historyCode"),
-            "historyDescription": m.get("historyDescription"),
-            "operationCode": m.get("operationCode"),
-            "operationDescription": m.get("operationDescription"),
-            "documentType": m.get("documentType"),
-            "documentNumber": m.get("documentNumber"),
-            "unitValue": m.get("unitValue"),
-            "inQuantity": m.get("inQuantity"),
-            "outQuantity": m.get("outQuantity"),
-            "balance": m.get("balance")
-        })
+            "previousBalance": data.get("previousBalance")
+        }
 
-# === CONVERSÃO E EXPORTAÇÃO ===
-if not todos_movimentos:
-    print("⚠️ Nenhum movimento retornado para os produtos consultados.")
-    sys.exit(0)
+        movimentos = []
+        for mv in data.get("movements", []):
+            movimentos.append({
+                "productCode": data.get("productCode"),
+                "movementDate": mv.get("movementDate"),
+                "historyCode": mv.get("historyCode"),
+                "historyDescription": mv.get("historyDescription"),
+                "operationCode": mv.get("operationCode"),
+                "operationDescription": mv.get("operationDescription"),
+                "documentType": mv.get("documentType"),
+                "documentNumber": mv.get("documentNumber"),
+                "unitValue": mv.get("unitValue"),
+                "inQuantity": mv.get("inQuantity"),
+                "outQuantity": mv.get("outQuantity"),
+                "balance": mv.get("balance")
+            })
 
-df_kardex = pd.DataFrame(todos_movimentos)
+        return produto, movimentos
 
-# Converte data e ordena
-df_kardex["movementDate"] = pd.to_datetime(df_kardex["movementDate"], errors="coerce")
-df_kardex = df_kardex.sort_values(by=["productCode", "movementDate"])
+    except Exception as e:
+        print(f"❌ Erro no produto {code}: {e}")
+        return None, None
 
-# === EXPORTA PARA EXCEL ===
-excel_file = f"kardex_movimentos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+# === EXECUÇÃO PARALELA ===
+all_produtos = []
+all_movimentos = []
+
+start_time = time.time()
+with ThreadPoolExecutor(max_workers=20) as executor:  # 20 threads em paralelo
+    futures = {executor.submit(consultar_produto, code): code for code in product_codes}
+
+    for future in as_completed(futures):
+        code = futures[future]
+        produto, movimentos = future.result()
+        if produto:
+            all_produtos.append(produto)
+        if movimentos:
+            all_movimentos.extend(movimentos)
+
+print(f"\n⏱️ Tempo total: {round(time.time() - start_time, 2)} segundos")
+print(f"📦 Produtos processados: {len(all_produtos)}")
+
+# === EXPORTAÇÃO ===
+df_produtos = pd.DataFrame(all_produtos)
+df_movimentos = pd.DataFrame(all_movimentos)
+
+excel_file = f"kardex_movement_parallel_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
-    df_kardex.to_excel(writer, index=False, sheet_name="Kardex")
+    df_produtos.to_excel(writer, index=False, sheet_name="Produtos")
+    if not df_movimentos.empty:
+        df_movimentos.to_excel(writer, index=False, sheet_name="Movimentos")
 
-print(f"✅ Relatório Kardex gerado com sucesso: {excel_file}")
-print(f"📊 Total de movimentos exportados: {len(df_kardex)}")
-print(f"📦 Produtos processados: {len(PRODUCT_CODES)}")
+print(f"✅ Arquivo gerado: {excel_file}")
