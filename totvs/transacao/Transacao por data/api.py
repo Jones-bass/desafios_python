@@ -18,9 +18,9 @@ headers = {
 }
 
 PARAMS = {
-    "BranchCode": "2",                     # Código da filial
-    "TransactionCode": "41248",            # Código da transação
-    "TransactionDate": "2025-10-28T00:00:00Z",  # Data da transação (ISO)
+    "BranchCode": "1",                     # Código da filial
+    "TransactionCode": "42289",            # Código da transação
+    "TransactionDate": "2025-11-06T00:00:00Z",  # Data da transação (ISO)
     "Expand": "itemPromotionalEngines,originDestination",  # Expande detalhes
 }
 

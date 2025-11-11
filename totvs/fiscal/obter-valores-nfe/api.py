@@ -28,15 +28,15 @@ def make_payload(page: int = 1, pageSize: int = 100) -> Dict[str, Any]:
     """Cria o payload de busca com paginação."""
     return {
         "filter": {
-            "branchCodeList": [3],
-            "operationType": "Output",
+            "branchCodeList": [2],
             "operationCodeList": [
-                111, 112, 151, 701, 702, 5101, 5102, 5103, 5104, 5105, 5952, 7101, 6108 
+                171, 183, 151, 701, 702, 5101, 5102, 5103, 5104, 5105, 5952, 7101, 6108 
                 ],
             "origin": "All",
+            "personCodeList": 585,
             "eletronicInvoiceStatusList": ["Authorized"],
-            "startIssueDate": "2025-09-01T00:00:00Z",
-            "endIssueDate": "2025-09-30T23:59:59Z",
+            "startIssueDate": "2025-001-01T00:00:00Z",
+            "endIssueDate": "2025-11-30T23:59:59Z",
         },
         "page": page,        
         "pageSize": pageSize,  
