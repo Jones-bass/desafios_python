@@ -13,7 +13,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES ===
-URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/image/v2/product/search"
+#URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/image/v2/product/search"
+URL = "https://treino.bhan.com.br:9443/api/totvsmoda/image/v2/product/search"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}",
@@ -22,49 +23,64 @@ headers = {
 
 print("🖼️ Consultando imagens dos produtos...")
 
-# === REQUEST BODY ===
-payload = {
-    "filter": {
-        "productCodeList": list(range(1, 99)),
-        "typeImageCodeList": [1]
-    },
-    "option": {
-        "quantityImageResult": 1
-    },
-}
+# === FUNÇÃO PARA OBTER PRODUTOS (por lote) ===
+def get_products(product_codes):
+    total_products = []
+    batch_size = 50  
+    for i in range(0, len(product_codes), batch_size):
+        batch_codes = product_codes[i:i+batch_size]
+        
+        payload = {
+            "filter": {
+                "productCodeList": batch_codes,
+                "typeImageCodeList": [1]
+            },
+            "option": {
+                "quantityImageResult": 1
+            },
+        }
 
-# === REQUISIÇÃO POST ===
-try:
-    response = requests.post(URL, headers=headers, json=payload, timeout=90)
-except requests.exceptions.RequestException as e:
-    print(f"❌ Erro na conexão com a API: {e}")
-    sys.exit(1)
+        # Faz a requisição
+        try:
+            response = requests.post(URL, headers=headers, json=payload, timeout=90)
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Erro na conexão com a API: {e}")
+            sys.exit(1)
 
-print(f"📡 Status HTTP: {response.status_code}")
-if response.status_code != 200:
-    print("❌ Erro na resposta da API:")
-    print(response.text)
-    sys.exit(1)
+        print(f"📡 Status HTTP: {response.status_code}")
+        if response.status_code != 200:
+            print("❌ Erro na resposta da API:")
+            print(response.text)
+            sys.exit(1)
 
-# === TRATAMENTO DO JSON ===
-try:
-    data = response.json()
-except requests.exceptions.JSONDecodeError:
-    print("❌ Erro ao decodificar JSON da resposta.")
-    sys.exit(1)
+        # === TRATAMENTO DO JSON ===
+        try:
+            data = response.json()
+        except requests.exceptions.JSONDecodeError:
+            print("❌ Erro ao decodificar JSON da resposta.")
+            sys.exit(1)
+
+        # === PROCESSA RESPOSTA ===
+        items = data.get("items", [])
+        if items:
+            total_products.extend(items)
+
+    return total_products
+
+# === INSERÇÃO DE PRODUTOS QUE VOCÊ QUER BUSCAR ===
+# Exemplo de como gerar a lista de produtos: de 1 até 999
+product_codes_to_search = list(range(1, 999))
+
+# === OBTÉM OS PRODUTOS ===
+produtos_data = get_products(product_codes_to_search)
 
 # === SALVA DEBUG ===
 debug_file = f"debug_product_images_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 with open(debug_file, "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+    json.dump(produtos_data, f, ensure_ascii=False, indent=2)
 print(f"💾 Debug salvo em: {debug_file}")
 
-# === PROCESSA RESPOSTA ===
-items = data.get("items", [])
-if not items:
-    print("⚠️ Nenhuma imagem encontrada para os filtros informados.")
-    sys.exit(0)
-
+# === PROCESSA OS PRODUTOS E IMAGENS ===
 produtos = []
 imagens = []
 
@@ -74,7 +90,7 @@ os.makedirs(img_dir, exist_ok=True)
 
 print("🧩 Processando e salvando imagens...")
 
-for item in items:
+for item in produtos_data:
     product_code = item.get("productCode")
 
     produtos.append({
