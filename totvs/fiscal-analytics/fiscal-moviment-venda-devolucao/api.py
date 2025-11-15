@@ -3,6 +3,7 @@ import pandas as pd
 import sys
 import os
 from datetime import datetime
+import json
 
 # === IMPORTA TOKEN ===
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -10,6 +11,7 @@ from auth.config import TOKEN
 
 # === CONFIGURAÇÕES DA API ===
 URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/branch-sale"
+#URL = "https://treino.bhan.com.br:9443/api/totvsmoda/analytics/v2/branch-sale"
 headers = {
     "Authorization": f"Bearer {TOKEN}"
 }
@@ -22,9 +24,9 @@ print("🚀 Iniciando consulta de Vendas via Query Parameters...")
 
 while True:
     params = {
-        "BranchCnpj": "45877608000137",
-        "start_date": "2025-09-01T00:00:00Z",
-        "end_date": "2025-09-30T23:59:59Z",
+        "BranchCnpj": "45877608000218",
+        "StartDate": "2025-09-01T00:00:00Z",
+        "EndDate": "2025-09-30T23:59:59Z",
         "Page": page,
         "PageSize": page_size
     }
@@ -37,7 +39,24 @@ while True:
         print("❌ Erro na requisição:", resp.text)
         break
 
+    # === DEBUG: SALVAR RESPOSTA ===
+    debug_file = f"debug_response_sales_page_{page}.json"
+    with open(debug_file, "w", encoding="utf-8") as f:
+        json.dump(resp.json(), f, ensure_ascii=False, indent=2)
+    print(f"💾 Resposta salva em: {debug_file}")
+
+    # === DEBUG: EXIBIR ESTRUTURA ===
     data = resp.json()
+
+    print("🔍 Estrutura da resposta:")
+    for key, value in data.items():
+        tipo = type(value).__name__
+        tam = len(value) if isinstance(value, (list, dict)) else "1"
+        print(f"   - {key}: {tipo} ({tam})")
+
+    print("🧩 Amostra (primeiros 1000 caracteres):")
+    print(json.dumps(data, indent=2, ensure_ascii=False)[:1000])
+    print("-" * 60)
 
     items = data.get("items", [])
     if not items:
