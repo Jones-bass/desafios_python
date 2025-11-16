@@ -16,12 +16,6 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === FILTROS ===
-FILTERS_PAYLOAD = {
-    "branchCodeList": [3],
-    "startMovementDate": "2025-09-01T00:00:00Z",
-    "endMovementDate": "2025-09-30T23:59:59Z",
-}
 
 # === PAGINAÇÃO ===
 page = 1
@@ -34,9 +28,10 @@ print("🚀 Iniciando consulta de Operações (Analytics + DEBUG)...")
 while True:
     payload = {
         "filter": {
-            "branchCodeList": FILTERS_PAYLOAD.get("branchCodeList", []),
-            "startMovementDate": FILTERS_PAYLOAD.get("startMovementDate"),
-            "endMovementDate": FILTERS_PAYLOAD.get("endMovementDate"),
+            "branchCodeList": [3],
+            "startMovementDate": "2025-09-01T00:00:00Z",
+            "endMovementDate": "2025-09-30T23:59:59Z"
+            
         },
         "page": page,
         "pageSize": page_size,

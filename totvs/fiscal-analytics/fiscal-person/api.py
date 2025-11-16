@@ -31,9 +31,6 @@ while True:
             "startMovementDate": "2025-09-01T00:00:00Z",
             "endMovementDate": "2025-09-30T00:00:00Z",
         },
-        "option": {
-            "classificationTypeCodeList": [102]
-        },
         "page": page,
         "pageSize": page_size,
     }

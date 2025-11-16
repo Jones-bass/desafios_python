@@ -27,12 +27,10 @@ print("🚀 Iniciando consulta de Parceiros / Filiais (Analytics + DEBUG)...")
 while True:
     payload = {
         "filter": {
-            "branchCodeList": 2,
+            "branchCodeList": [3],
             "startMovementDate": "2025-09-01T00:00:00Z",
             "endMovementDate": "2025-09-30T00:00:00Z",
         },
-        "page": page,
-        "pageSize": page_size,
     }
 
     print(f"\n📄 Consultando página {page} de parceiros…")
