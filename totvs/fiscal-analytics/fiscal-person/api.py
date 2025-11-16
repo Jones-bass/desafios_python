@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from auth.config import TOKEN
 
 # === CONFIGURAÇÕES DA API ===
-PEOPLE_URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/person-fiscal-movement/search"
+URL = "https://apitotvsmoda.bhan.com.br/api/totvsmoda/analytics/v2/person-fiscal-movement/search"
 headers = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json"
@@ -27,7 +27,7 @@ print("🚀 Iniciando consulta de Pessoas (Analytics + DEBUG)...")
 while True:
     payload = {
         "filter": {
-            "branchCodeList": [2],
+            "branchCodeList": [5],
             "startMovementDate": "2025-09-01T00:00:00Z",
             "endMovementDate": "2025-09-30T00:00:00Z",
         },
@@ -36,7 +36,7 @@ while True:
     }
 
     print(f"\n📄 Consultando página {page} de pessoas…")
-    resp = requests.post(PEOPLE_URL, headers=headers, json=payload)
+    resp = requests.post(URL, headers=headers, json=payload)
     print(f"📡 Status: {resp.status_code}")
 
     if resp.status_code != 200:

@@ -32,10 +32,8 @@ while True:
                 "endMovementDate": "2025-09-30T23:59:59Z",
         },
         "option": {
-            "classificationTypeCodeList": [0]
+            "classificationTypeCodeList": [102]
         },
-        "page": page,
-        "pageSize": page_size,
     }
 
     print(f"\n📄 Consultando página {page} de produtos…")
@@ -43,7 +41,9 @@ while True:
     print(f"📡 Status: {resp.status_code}")
 
     if resp.status_code != 200:
-        print("❌ Erro na requisição:", resp.text)
+        print(f"❌ Erro na requisição. Status: {resp.status_code}, Mensagem: {resp.text}")
+        with open(f"error_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt", "w") as log_file:
+            log_file.write(f"Status: {resp.status_code}\nMensagem: {resp.text}")
         break
 
     try:
@@ -71,25 +71,29 @@ while True:
 
     # === PROCESSAMENTO DE DADOS ===
     items = data.get("items", [])
-    if not items:
-        print("⚠️ Nenhum registro encontrado nesta página.")
+    if not items or items[0].get("productCode") == 0:
+        print("⚠️ Nenhum produto válido encontrado.")
         break
 
     for item in items:
+        product_data = {
+            "CodigoProduto": item.get("productCode"),
+            "NomeProduto": item.get("name"),
+            "CodigoReferencia": item.get("referenceCode"),
+            "NomeReferencia": item.get("referenceName"),
+            "SKU": item.get("productSku"),
+            "CodigoCor": item.get("colorCode"),
+            "NomeCor": item.get("colorName"),
+            "Tamanho": item.get("sizeName"),
+            "CodigoNCM": item.get("ncmCode"),
+            "NomeNCM": item.get("NcmName"),
+        }
+
+        # Check if classifications exist
         classifications = item.get("classifications", [])
         if classifications:
             for cls in classifications:
-                all_products.append({
-                    "CodigoProduto": item.get("productCode"),
-                    "NomeProduto": item.get("name"),
-                    "CodigoReferencia": item.get("referenceCode"),
-                    "NomeReferencia": item.get("referenceName"),
-                    "SKU": item.get("productSku"),
-                    "CodigoCor": item.get("colorCode"),
-                    "NomeCor": item.get("colorName"),
-                    "Tamanho": item.get("sizeName"),
-                    "CodigoNCM": item.get("ncmCode"),
-                    "NomeNCM": item.get("NcmName"),
+                product_data.update({
                     "Classificacao_TipoCodigo": cls.get("typeCode"),
                     "Classificacao_TipoNome": cls.get("typeName"),
                     "Classificacao_Descricao": cls.get("description"),
@@ -97,23 +101,15 @@ while True:
                     "Classificacao_Nome": cls.get("name"),
                 })
         else:
-            all_products.append({
-                "CodigoProduto": item.get("productCode"),
-                "NomeProduto": item.get("name"),
-                "CodigoReferencia": item.get("referenceCode"),
-                "NomeReferencia": item.get("referenceName"),
-                "SKU": item.get("productSku"),
-                "CodigoCor": item.get("colorCode"),
-                "NomeCor": item.get("colorName"),
-                "Tamanho": item.get("sizeName"),
-                "CodigoNCM": item.get("ncmCode"),
-                "NomeNCM": item.get("NcmName"),
+            product_data.update({
                 "Classificacao_TipoCodigo": None,
                 "Classificacao_TipoNome": None,
                 "Classificacao_Descricao": None,
                 "Classificacao_Codigo": None,
                 "Classificacao_Nome": None,
             })
+
+        all_products.append(product_data)
 
     summary = {
         "Page": page,
@@ -147,7 +143,6 @@ if df_products.empty:
 else:
     date_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     excel_file = f"produtos_{date_now}.xlsx"
-
     try:
         with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
             df_products.to_excel(writer, sheet_name="Produtos", index=False)

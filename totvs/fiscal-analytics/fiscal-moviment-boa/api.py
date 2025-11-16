@@ -31,7 +31,7 @@ while True:
         "page": page,
         "pageSize": page_size,
         "filter": {
-            "branchCodeList": [2],  
+            "branchCodeList": [5],  
             
             # === INTERVALO DE DATAS ===
             "startMovementDate": "2025-09-01T00:00:00Z",
