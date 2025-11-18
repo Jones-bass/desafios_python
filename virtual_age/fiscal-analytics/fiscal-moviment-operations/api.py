@@ -27,9 +27,9 @@ print("🚀 Iniciando consulta de Operações (Analytics + DEBUG)...")
 while True:
     payload = {
         "filter": {
-            "branchCodeList": [5],
-            "startMovementDate": "2025-09-01T00:00:00Z",
-            "endMovementDate": "2025-09-30T00:00:00Z",
+            "branchCodeList": [3,5,7],
+            "startMovementDate": "2025-01-01T00:00:00Z",
+            "endMovementDate": "2025-11-30T00:00:00Z",
         },
         "page": page,
         "pageSize": page_size,

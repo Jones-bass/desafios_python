@@ -18,7 +18,7 @@ headers = {
 
 # === PAGINAÇÃO ===
 page = 1
-page_size = 500
+page_size = 1000
 all_movements = []
 all_summaries = []
 
@@ -28,16 +28,15 @@ while True:
 
     # === PAYLOAD COMPLETO (traz tudo) ===
     payload = {
-        "page": page,
-        "pageSize": page_size,
         "filter": {
             "branchCodeList": [5],  
             
             # === INTERVALO DE DATAS ===
-            "startMovementDate": "2025-09-01T00:00:00Z",
-            "endMovementDate": "2025-09-30T23:59:59Z",
-
-        }
+            "startMovementDate": "2025-10-01T00:00:00Z",
+            "endMovementDate": "2025-10-30T23:59:59Z",
+        },
+        "page": page,
+        "pageSize": page_size,
     }
 
     print(f"\n📄 Consultando página {page}…")
@@ -58,7 +57,6 @@ while True:
     debug_file = f"debug_fiscal_movement_page_{page}.json"
     with open(debug_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-
     print(f"💾 Armazenado: {debug_file}")
 
     # === VERIFICA DADOS ===
@@ -76,6 +74,10 @@ while True:
 
     # === CARREGAR MOVIMENTOS ===
     for item in items:
+        # Verificando se a operação 151 está presente
+        if item.get("operationCode") == "151":
+            print(f"⚠️ Operação 151 encontrada: {item}")  # Log para verificar a operação
+
         all_movements.append({
             "Filial": item.get("branchCode"),
             "Produto": item.get("productCode"),

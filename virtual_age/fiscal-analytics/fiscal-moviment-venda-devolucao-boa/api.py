@@ -26,10 +26,10 @@ pagination_summary = []
 params = {
     # "BranchCnpj": "41791600000445", #Atacado
     # "BranchCnpj": "45877608000218",#CJ
-    # "BranchCnpj": "45877608000137", #MG
-    "BranchCnpj": "41791600000526",  # ECOM
-    "StartDate": "2025-09-01T00:00:00Z",
-    "EndDate": "2025-09-30T23:59:59Z",
+     "BranchCnpj": "45877608000137", #MG
+    # "BranchCnpj": "41791600000526",  # ECOM
+    "StartDate": "2025-10-01T00:00:00Z",
+    "EndDate": "2025-10-31T23:59:59Z",
     "pageSize": page_size
 }
 
