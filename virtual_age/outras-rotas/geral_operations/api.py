@@ -1,8 +1,8 @@
 import requests
 import pandas as pd
-from datetime import datetime, timezone
 import json
 import time
+from datetime import datetime
 import sys
 import os
 
@@ -24,7 +24,7 @@ while True:
     params = {
         "Order": "operationCode",
         "StartChangeDate": "2025-09-01T00:00:00Z",
-        "EndChangeDate": "2025-09-30T00:00:00Z",
+        "EndChangeDate": "2025-11-30T00:00:00Z",
         "Expand": "calculations,values,balances,classifications",
         "Page": PAGE,
         "PageSize": PAGE_SIZE
@@ -75,7 +75,7 @@ while True:
     PAGE += 1
     time.sleep(0.3)
 
-# === CRIAÇÃO DO DATAFRAME ===
+# === CRIAÇÃO DO DATAFRAME PRINCIPAL ===
 if not all_records:
     print("⚠️ Nenhum registro retornado da API.")
 else:
@@ -86,11 +86,40 @@ else:
         if "date" in col.lower():
             df_main[col] = pd.to_datetime(df_main[col], errors="coerce")
 
-    # === EXPORTAÇÃO PARA EXCEL E CSV ===
-    excel_file = "operacoes.xlsx"
+    # === EXPANSÃO DOS CAMPOS ANINHADOS ===
+    nested_fields = ["calculations", "values", "balances", "classifications"]
+    nested_dfs = {}
 
-    df_main.to_excel(excel_file, index=False)
+    for field in nested_fields:
+        nested_list = []
+        for item in all_records:
+            person_code = item.get("operationCode")
+            for entry in item.get(field) or []:
+                # Verifica se entry é um dicionário antes de modificar
+                if isinstance(entry, dict):
+                    entry["operationCode"] = person_code  # Adiciona código da operação para referência
+                    nested_list.append(entry)
+                else:
+                    print(f"⚠️ {field} contém um item que não é um dicionário: {entry}")
 
-    print(f"✅ Total de registros coletados: {len(df_main)}")
-    print(f"📂 Arquivos gerados: {excel_file}")
+        if nested_list:
+            nested_dfs[field] = pd.json_normalize(nested_list)
+            print(f"📝 {field}: {len(nested_dfs[field])} registros extraídos.")
+        else:
+            nested_dfs[field] = pd.DataFrame()
+            print(f"⚠️ {field}: nenhum registro encontrado.")
 
+    # === EXPORTAÇÃO PARA EXCEL ===
+    excel_file = f"operacoes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    try:
+        with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
+            if not df_main.empty:
+                df_main.to_excel(writer, index=False, sheet_name="Operations")
+            for key, df_nested in nested_dfs.items():
+                if not df_nested.empty:
+                    df_nested.to_excel(writer, index=False, sheet_name=key)
+        print(f"✅ Relatório Excel gerado com sucesso: {excel_file}")
+    except Exception as e:
+        print(f"❌ Erro ao exportar para Excel: {e}")
+
+print("🏁 Execução finalizada com sucesso.")
